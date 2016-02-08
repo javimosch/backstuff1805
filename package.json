@@ -1,0 +1,11 @@
+{
+  "name": "asd",
+  "version": "0.0.0",
+  "description": "",
+  "scripts":{
+      "start":"node app"
+  },
+  "main": "index.js",
+  "author": "",
+  "license": "ISC"
+}

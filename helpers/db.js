@@ -33,4 +33,38 @@ process.on('SIGINT', function() {
 
 ///SCHEMAS
 mongoose.model('Cat', { name: String });
-exports.mongoose =mongoose;
+
+mongoose.model('Diagnostiqueur', { 
+    firstName: String,
+    lastName: String 
+});
+
+
+exports.mongoose = mongoose;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

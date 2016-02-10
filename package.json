@@ -11,6 +11,10 @@
   "dependencies": {
     "express-cors": "0.0.3",
     "body-parser": "^1.14.2",
-    "mongoose": "^4.4.2"
+    "mongoose": "^4.4.2",
+    "moment": "^2.11.2",
+    "lodash": "^4.3.0",
+    "passy": "^0.8.2",
+    "password-maker": "^1.1.2"
   }
 }

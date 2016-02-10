@@ -7,6 +7,9 @@ function handleError(res,err){
     res.json({message:"Server error",detail:err});
 }
 
+
+
+
 exports.get = function (req,res){
     var data = req.body;
      Diagnostiqueur.find({_id:{$eq:data._id}},function(err,r){

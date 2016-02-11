@@ -34,10 +34,19 @@ process.on('SIGINT', function() {
 ///SCHEMAS
 mongoose.model('Cat', { name: String });
 
-mongoose.model('Diagnostiqueur', { 
-    firstName: String,
-    lastName: String 
+mongoose.model('Diag', { 
+    userId:String,
+    
 });
+
+mongoose.model('User', { 
+    email: String,
+    password: String,
+    firstName:String,
+    lastName:String,
+    type: {type:String, default: 'admin'} //admin client diag
+});
+
 
 mongoose.model('Client', { 
     type: {type:String,default:'Landlord'}, //(Landlord / Agency / Foncière)
@@ -46,7 +55,8 @@ mongoose.model('Client', {
     siret: String,
     discount: {type:Number,default:0},
     email: String,
-    password: String,
+    userId: String,
+    //password: String,
     createdAt:{type:Date,default:Date.now},
     updatedAt:{type:Date,default:Date.now},
     passwordSended:{type:Boolean,default:false},

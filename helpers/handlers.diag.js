@@ -1,14 +1,13 @@
 var mongoose = require('./db').mongoose;
 var generatePassword = require("password-maker");
-var Client = mongoose.model('Client');
+var Diag = mongoose.model('Diag');
 var promise = require('./utils').promise;
 var validate = require('./validator').validate;
 var handleMissingKeys = require('./validator').handleMissingKeys;
 
-var User = require('./handlers.user').actions;
 
 function handleError(err) {
-    console.log('CLIENT:HANDLING-ERROR');
+    console.log('DIAG:HANDLING-ERROR');
     return {
         message: "Server error",
         detail: err
@@ -18,7 +17,7 @@ function handleError(err) {
 function exists(_id) {
     return promise(function(resolve, error) {
         if (_id) {
-            Client.find({
+            Diag.find({
                 _id: {
                     $eq: _id
                 }
@@ -35,63 +34,31 @@ function exists(_id) {
     });
 }
 
+
+
 function save(data, callback) {
-    console.log('CLIENT:SAVE:VALIDATING');
+    console.log('DIAG:SAVE:VALIDATING');
     validate(data, ['email']).error(function(keys) {
-        console.log('CLIENT:SAVE:VALIDATING:FAIL');
+        console.log('DIAG:SAVE:VALIDATING:FAIL');
         return handleMissingKeys(keys, callback);
     }).then(_check);
 
     function _check() {
-        console.log('CLIENT:SAVE:CHECK');
+        console.log('DIAG:SAVE:CHECK');
         exists(data._id).then(_save).error(function() {
-
-            //find userAsociated
-console.log('CLIENT:SAVE:CHECK:USER-EXISTS');
-            User.find({email:data.email},function(res){
-                if(res.result.length > 0){
-                    console.log('CLIENT:SAVE:CHECK:USER-EXISTS:TRUE');
-                    data.userId = res.result[0]._id;
-                    _save(undefined);
-                }else{
-                    console.log('CLIENT:SAVE:CHECK:USER-EXISTS:FALSE');
-                    _saveAsociatedUser();
-                }
-            });
-
-            function _saveAsociatedUser(){
-                //save an user first
-                console.log('CLIENT:SAVE:CHECK:USER-SAVING');
-                User.save({email:data.email,type:'client'},function(res){
-                    if(res.ok){
-                        console.log('CLIENT:SAVE:CHECK:USER-SAVING:SUCCESS');
-                        data.userId = res.result._id;
-                        _save(undefined);
-                    }else{
-                        console.log('CLIENT:SAVE:CHECK:USER-SAVING:FAIL');
-                        return callback(res);
-                    }
-                });
-            }
-
-            
+            _save(undefined);
         });
     }
 
     function _save(instance) {
-        instance = instance || new Client(data);
-        instance.type = data.type || instance.type;
-        instance.address = data.address || instance.address;
-        instance.tel = data.tel || instance.tel;
-        instance.siret = data.siret || instance.siret;
-        instance.discount = data.discount || instance.discount;
+        instance = instance || new Diag(data);
+        instance.type = data.type || instance.type || 'client';
         instance.email = data.email || null;
-        instance.userId = data.userId || null;
-        //instance.password = data.password || generatePassword(8);
-        console.log('CLIENT:SAVE:SAVING');
+        instance.password = data.password || generatePassword(8);
+        console.log('DIAG:SAVE:SAVING');
         instance.save(function(err, instance) {
             if (err) return callback(handleError(err));
-            console.log('CLIENT:SAVE:SAVING:SUCCESS');
+            console.log('DIAG:SAVE:SAVING:SUCCESS');
             callback({
                 message: 'Save success',
                 result: instance
@@ -101,7 +68,7 @@ console.log('CLIENT:SAVE:CHECK:USER-EXISTS');
 }
 
 function getAll(callback) {
-    Client.find(function(err, r) {
+    Diag.find(function(err, r) {
         if (err) return callback(handleError(err));
         if (r && r.length >= 1) {
             callback({
@@ -120,32 +87,36 @@ function getAll(callback) {
 
 function remove(data, callback) {
     validate(data, ['_id']).error(function(keys) {
-        console.log('CLIENT:REMOVE:VALIDATING:FAIL');
+        console.log('DIAG:REMOVE:VALIDATING:FAIL');
         return handleMissingKeys(keys, callback);
     }).then(_remove);
 
     function _remove() {
-        console.log('CLIENT:REMOVE:BEGIN');
-        Client.remove({
+        console.log('DIAG:REMOVE:BEGIN');
+        Diag.remove({
             _id: {
                 $eq: data._id
             }
         }, function(err) {
             if (err) return callback(handleError(err));
-            console.log('CLIENT:REMOVE:SUCCESS');
-            callback({ok:true,message:'Client deleted',result:null});
+            console.log('DIAG:REMOVE:SUCCESS');
+            callback({
+                ok: true,
+                message: 'Diag deleted',
+                result: null
+            });
         });
     }
 }
 
 function get(data, callback) {
     validate(data, ['_id']).error(function(keys) {
-        console.log('CLIENT:GET:VALIDATING:FAIL');
+        console.log('DIAG:GET:VALIDATING:FAIL');
         return handleMissingKeys(keys, callback);
     }).then(_get);
 
     function _get() {
-        Client.find({
+        Diag.find({
             _id: {
                 $eq: data._id
             }
@@ -153,13 +124,13 @@ function get(data, callback) {
             if (err) return handleError(err);
             if (r && r.length >= 1) {
                 callback({
-                    ok:true,
+                    ok: true,
                     message: 'Retrieved success',
                     result: r[0]
                 });
             } else {
                 callback({
-                    ok:false,
+                    ok: false,
                     message: 'Retrieved failed. Item not found.',
                     result: null
                 });
@@ -172,31 +143,88 @@ function get(data, callback) {
 
 function removeAll(data, callback) {
     validate(data, ['ids']).error(function(keys) {
-        console.log('CLIENT:REMOVE-ALL:VALIDATING:FAIL');
+        console.log('DIAG:REMOVE-ALL:VALIDATING:FAIL');
         return handleMissingKeys(keys, callback);
     }).then(_removeAll);
 
     function _removeAll() {
-        console.log('CLIENT:REMOVE-ALL:BEGIN');
-        Client.remove({
+        console.log('DIAG:REMOVE-ALL:BEGIN');
+        Diag.remove({
             _id: {
                 $all: data.ids
             }
         }, function(err) {
             if (err) return callback(handleError(err));
-            console.log('CLIENT:REMOVE-ALL:SUCCESS');
-            callback({ok:true,message:'Clients deleted',result:null});
+            console.log('DIAG:REMOVE-ALL:SUCCESS');
+            callback({
+                ok: true,
+                message: 'Diags deleted',
+                result: null
+            });
         });
     }
+}
+
+function find(data,callback){
+    var rules = {};
+    for(var x in data){
+        rules[x]={$eq:data[x]};
+    }
+    Diag.find(rules,function(err,r){
+        if (err) return callback(handleError(err));
+        return callback({ok:true,message:'Query success',result:r});
+    });
 }
 
 exports.actions = {
     getAll: getAll,
     save: save,
     remove: remove,
-    removeAll:removeAll
+    removeAll: removeAll,
+    find:find
 };
 
+
+exports.login = function(req, res) {
+    var data = req.body;
+    Diag.find({
+        email: {
+            $eq: data.email
+        },
+        password: {
+            $eq: data.password
+        }
+    }, function(err, r) {
+        if (err) return res.json(handleError(err));
+        var item = r && r.length >= 1 && r[0] || null;
+        if (item) {
+            res.json({
+                ok: true,
+                message: "Diag auth success",
+                result: {
+                    email: data.email,
+                    password: data.password,
+                    type : item.type,
+                    expire: new Date().getTime() + (1000 * 60) * 120
+                }
+            });
+        } else {
+            res.json({
+                ok: false,
+                message: 'Incorrect login',
+                result: {}
+            });
+        }
+    });
+};
+
+
+exports.find = function(req, res) {
+    var data = req.body;
+    find(data, function(rta) {
+        res.json(rta);
+    });
+};
 
 exports.get = function(req, res) {
     var data = req.body;

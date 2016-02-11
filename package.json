@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "",
   "scripts": {
-    "start": "node app"
+    "start": "heroku local web"
   },
   "main": "index.js",
   "author": "",
@@ -17,5 +17,11 @@
     "mongoose": "^4.4.2",
     "password-maker": "^1.1.2",
     "passy": "^0.8.2"
+  },
+  "devDependencies": {
+    "browser-sync": "^2.11.1",
+    "gulp": "^3.9.1",
+    "gulp-nodemon": "^2.0.6",
+    "gulp-watch": "^4.3.5"
   }
 }

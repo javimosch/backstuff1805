@@ -22,7 +22,7 @@ function handleError(res,err){
 function exists(_id){
     return promise(function(resolve,error){
         if(_id){
-            Order.find({_id:{$eq:data._id}},function(err,r){
+            Order.find({_id:{$eq:_id}},function(err,r){
                 if(r && r.length>=1){
                     resolve(r[0]);
                 }else{

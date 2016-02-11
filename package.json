@@ -9,12 +9,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express-cors": "0.0.3",
     "body-parser": "^1.14.2",
-    "mongoose": "^4.4.2",
-    "moment": "^2.11.2",
+    "express": "^4.13.4",
+    "express-cors": "0.0.3",
     "lodash": "^4.3.0",
-    "passy": "^0.8.2",
-    "password-maker": "^1.1.2"
+    "moment": "^2.11.2",
+    "mongoose": "^4.4.2",
+    "password-maker": "^1.1.2",
+    "passy": "^0.8.2"
   }
 }

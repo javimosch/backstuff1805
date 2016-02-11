@@ -22,7 +22,7 @@ exports.configure = function(app){
     app.post('/client/removeAll', client.removeAll);
 
 
-    app.post('/save/order', order.save);
+    app.post('/order/save', order.save);
 
     console.log('Routes loaded.');
 };

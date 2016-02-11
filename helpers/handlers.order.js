@@ -102,7 +102,7 @@ function save(data,callback){
         instance.save(function(err,r){
             if(err) return handleError(err);
             console.log('ORDER:SAVE:SUCCESS');
-            callback({message:'Save success',post:data});
+            callback({ok:true,message:'Save success',result:data});
         });
     }
 }
@@ -110,9 +110,9 @@ function getSingle(data,callback){
      Order.find({_id:{$eq:data._id}},function(err,r){
          if(err) handleError(err);
         if(r && r.length>=1){
-            res.json({message:'Retrieved success',item:r[0]});
+            res.json({ok:true,message:'Retrieved success',item:r[0]});
         }else{
-            res.json({message:'Retrieved failed. Item not found.',item:null});
+            res.json({ok:false,message:'Retrieved failed. Item not found.',item:null});
         } 
     });
 }
@@ -120,9 +120,9 @@ function getAll(callback){
      Order.find(function(err,r){
          if(err) handleError(err);
         if(r && r.length>=1){
-            callback({message:'Retrieved success',result:r});
+            callback({ok:true,message:'Retrieved success',result:r});
         }else{
-            callback({message:'Retrieved failed. Item not found.',result:[]});
+            callback({ok:false,message:'Retrieved failed. Item not found.',result:[]});
         } 
     });
 }

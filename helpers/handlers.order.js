@@ -1,159 +1,130 @@
-var mongoose= require('./db').mongoose;
-var moment  = require('moment');
+var mongoose = require('./db').mongoose;
+var moment = require('moment');
 var promise = require('./utils').promise;
 var _ = require('lodash');
-
+var generatePassword = require("password-maker");
 var validate = require('./validator').validate;
 var handleMissingKeys = require('./validator').handleMissingKeys;
+//var ClientActions = require('./handlers.client').actions;
+var User = mongoose.model('User');
+var Order = mongoose.model('Order');
+var actions = require('./handler.actions').create('Order');
+var UserAction = require('./handlers.user').actions;
+var UserAction = require('./handlers.user').actions;
 
-var ClientActions = require('./handlers.client').actions;
-var Order  = mongoose.model('Order'); 
 
+var email = require('./handlers.email').actions;
 
-function handleError(res,err){
-    res.json({ok:false,message:"Server error",detail:err});
+var saveKeys = ['_client', '_diag', 'diagStart', 'diagEnd', 'diags'
+
+    , 'address', 'price', 'time'
+];
+
+function create(data, cb) {
+    actions.create(data, cb, saveKeys);
 }
 
-
-
-
-//ACTIONS
-
-function exists(_id){
-    return promise(function(resolve,error){
-        if(_id){
-            Order.find({_id:{$eq:_id}},function(err,r){
-                if(r && r.length>=1){
-                    resolve(r[0]);
-                }else{
-                    error();
-                } 
-            });
-        }else{
-            error();
-        }
-    });
+function save(data, cb) {
+    actions.log('save=' + JSON.stringify(data));
+    actions.createUpdate(data, (err, r) => {
+        if (err) return cb(err, null);
+        cb(err, r);
+    }, {}, saveKeys);
 }
 
-function save(data,callback){
-    console.log('ORDER:SAVE:BEGIN');
-    validate(data,['inspectorId','diagFrom','diagTo','diags','address','price','time']).error(function(keys){
-        console.log('ORDER:SAVE:VALIDATIONS:FAIL');
-        return handleMissingKeys(keys,callback);
-    }).then(_check);
-    
-    function _check(){
-        console.log('ORDER:SAVE:CHECK');
-        //check: si no existe clientId buscamos email para generar un cliente.data.
-        if(_.isUndefined(data.clientId)){
-            if(_.isUndefined(data.email) || _.isNull(data.email) || data.email === ''){
-                console.log('ORDER:SAVE:CHECK:FAIL:ClientId or Email required');
-                callback({ok:false,message:"clientId or email required."});
-            }else{
-                data.createdAt = new Date();
-                console.log('ORDER:SAVE:CHECK:saving new client');
-                //action: create a client from email
-                ClientActions.save({email:data.email},function(client){
-                    console.log('ORDER:SAVE:CHECK:saving:new:client:ok');
-                    //check: create or update order
-                    data.clientId = client._id;
-                    exists(data._id).then(_save).error(function(){
-                        _save(undefined);
-                    });            
+function saveWithEmail(data, cb) {
+    actions.log('saveWithEmail=' + JSON.stringify(data));
+    actions.check(data, ['email', '_diag', 'diagStart', 'diagEnd'
+
+        , 'diags', 'address', 'price', 'time'
+    ], (err, r) => {
+        if (err) return cb(err, null);
+        UserAction.get({
+            email: data.email,
+            type: 'client'
+        }, (err, r) => {
+            if (err) return cb(err, null);
+            actions.log('saveWithEmail=user:get:return' + JSON.stringify(r));
+            if (r) {
+                data._client = r._id;
+                return save(data, cb);
+            } else {
+                UserAction.createClientIfNew({
+                    email: data.email
+                }, (err, r) => {
+                    if (err) return cb(err, null);
+                    data._client = r._id;
+                    return save(data, cb);
                 });
-            }    
-        }else{
-            console.log('ORDER:SAVE:CHECK:ClientId-Found:saving');
-            //check: create or update order
-            exists(data._id).then(_save).error(function(){
-                _save(undefined);
-            });    
-        }
-    }
-    
-    
-    function _save(instance){
-        instance = instance || new Order(data);
-        instance.clientId = data.clientId || instance.clientId;
-        instance.inspectorId = data.inspectorId; //REQUIRED inspectorId
-        var hours = moment(data.diagFrom).hours();
-        var min = moment(data.diagTo).minutes();
-        var date = moment(data.date).hours(hours).minutes(min);
-        instance.diags = data.diags;//REQUIRED diags
-        instance.date = date;
-        instance.address = data.address;//REQUIRED address
-        instance.createdAt = data.createdAt || instance.createdAt || new Date();
-        instance.updatedAt = new Date();
-        instance.status = data.status || "ordered";
-        instance.price = data.price || instance.price;//REQUIRED price
-        instance.info = data.info  || instance.info;
-        instance.obs = data.obs = "" || instance.obs;
-        instance.time = data.time || instance.time;//REQUIRED time
-        instance.comission = data.comission || instance.comission || 0;
-        instance.pdfId = data.pdfId || instance.pdfId || null;
-        /*
-        status:
-            - ordered //just created 
-            - prepaid //client paid first. When upload pdf -> complete
-            - delivered // PDF uploaded first. When client paid -> complete
-            - complete
-        */
-        console.log('ORDER:SAVE:SAVING');
-        instance.save(function(err,r){
-            if(err) return handleError(err);
-            console.log('ORDER:SAVE:SUCCESS');
-            callback({ok:true,message:'Save success',result:data});
+            }
         });
-    }
-}
-function getSingle(data,callback){
-     Order.find({_id:{$eq:data._id}},function(err,r){
-         if(err) handleError(err);
-        if(r && r.length>=1){
-            res.json({ok:true,message:'Retrieved success',item:r[0]});
-        }else{
-            res.json({ok:false,message:'Retrieved failed. Item not found.',item:null});
-        } 
-    });
-}
-function getAll(callback){
-     Order.find(function(err,r){
-         if(err) handleError(err);
-        if(r && r.length>=1){
-            callback({ok:true,message:'Retrieved success',result:r});
-        }else{
-            callback({ok:false,message:'Retrieved failed. Item not found.',result:[]});
-        } 
     });
 }
 
+function saveTest(data, cb) {
+    var data = {
+        "diags": {
+            "dpe": true,
+            "dta": false,
+            "crep": false,
+            "loiCarrez": true,
+            "ernt": true,
+            "termites": false,
+            "gaz": false,
+            "electricity": false,
+            "parasitaire": false
+        },
+        "sell": true,
+        "house": true,
+        "squareMeters": "-40m2",
+        "constructionPermissionDate": "avant le 01/01/1949",
+        "address": "15 Boulevard Voltaire, 75011 Paris, Francia",
+        "gasInstallation": "Oui, Moins de 15 ans",
+        "date": "2016-02-12T11:20:15.229Z",
+        "price": 70,
+        "time": "1:5",
+        "diagStart": 1455274214714,
+        "_diag": '56bdcb44f0aba6ab106a7007',
+        "diagEnd": 1455277814714,
+        "email": "arancibiajav@gmail.com"
+    };
+    return saveWithEmail(data, cb);
+}
 
 exports.actions = {
-    getAll:getAll,
-    save:save,
-    get:getSingle
+    //custom
+    save: save,
+    saveWithEmail: saveWithEmail,
+    //heredado
+    existsById: actions.existsById,
+    existsByField: actions.existsByField,
+    createUpdate: actions.createUpdate,
+    getAll: actions.getAll,
+    remove: actions.remove,
+    result: actions.result,
+    get: actions.get,
+    check: actions.check,
+    removeAll: actions.removeAll,
+    toRules: actions.toRules,
+    find: actions.find,
+    create: create,
+    log: actions.log
 };
 
-exports.get = function (req,res){
-    get(req.body,function(result){
-        res.json(result);
-    });
-};
-
-exports.getAll = function (req,res){
-    getAll(function(rta){
-       res.json(rta) ;
-    });
-};
-
-exports.save = function (req, res) {
-    var data = req.body;
-    save(data,function(result){
-        res.json(result);
-    });
-};
-
-
-
-
-
+exports.routes = (app) => {
+    app.post('/order/email', (req, res) => email.clientNewAccount(req.body, actions.result(res)));
+    app.post('/order/existsById', (req, res) => actions.existsById(req.body, actions.result(res)));
+    app.post('/order/existsByField', (req, res) => actions.existsByField(req.body, actions.result(res)));
+    app.post('/order/createUpdate', (req, res) => actions.createUpdate(req.body, actions.result(res)));
+    app.post('/order/create', (req, res) => create(req.body, actions.result(res)));
+    app.post('/order/find', (req, res) => actions.find(req.body, actions.result(res)));
+    app.post('/order/login', (req, res) => login(req.body, actions.result(res)));
+    app.post('/order/save', (req, res) => save(req.body, actions.result(res)));
+    app.post('/order/saveTest', (req, res) => saveTest(req.body, actions.result(res)));
+    app.post('/order/saveWithEmail', (req, res) => saveWithEmail(req.body, actions.result(res)));
+    app.post('/order/get', (req, res) => actions.get(req.body, actions.result(res)));
+    app.post('/order/getAll', (req, res) => actions.getAll(req.body, actions.result(res)));
+    app.post('/order/remove', (req, res) => actions.remove(req.body, actions.result(res)));
+    app.post('/order/removeAll', (req, res) => actions.removeAll(req.body, actions.result(res)));
+    actions.log('routes-order-ok');
+}

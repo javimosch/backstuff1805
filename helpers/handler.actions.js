@@ -92,7 +92,11 @@ exports.create = function(modelName) {
         log('get=' + JSON.stringify(data));
         //check(data, ['_id'], (err, r) => {
         //  if (err) return cb(err, r);
-        Model.findOne(toRules(data)).exec((err, r) => {
+        var query = Model.findOne(toRules(data))
+        if(data.__populate){
+            query = query.populate(data.__populate[0],data.__populate[1]);
+        }
+        query.exec((err, r) => {
             if (err) return cb(err, r);
             cb(null, r);
         });

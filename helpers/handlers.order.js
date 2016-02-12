@@ -17,7 +17,7 @@ var email = require('./handlers.email').actions;
 
 var saveKeys = ['_client', '_diag', 'diagStart', 'diagEnd', 'diags'
 
-    , 'address', 'price', 'time'
+    , 'address', 'price' //, 'time'
 ];
 
 function create(data, cb) {

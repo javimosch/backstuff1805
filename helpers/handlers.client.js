@@ -93,6 +93,7 @@ console.log('CLIENT:SAVE:CHECK:USER-EXISTS');
             if (err) return callback(handleError(err));
             console.log('CLIENT:SAVE:SAVING:SUCCESS');
             callback({
+                ok:true,
                 message: 'Save success',
                 result: instance
             });

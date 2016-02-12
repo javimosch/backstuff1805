@@ -1,3 +1,17 @@
+var fs = require("fs"),
+    json;
+
+function readFileSync(file, encoding, json) {
+    var filepath = __dirname + '/' + file;
+    if (typeof(encoding) == 'undefined') {
+        encoding = 'utf8';
+    }
+    var x = fs.readFileSync(filepath, encoding);
+    return (json)?JSON.parse(x):x;
+}
+exports.getJSON = (file) => readFileSync(file,undefined, true);
+exports.getFile = (file) => readFileSync(file,undefined, false);
+
 function MyPromise(cb) {
     var _scope = {
         cb: null,
@@ -6,11 +20,15 @@ function MyPromise(cb) {
         res: null
     };
     var resolve = function(res) {
-        if(_scope.cb){ _scope.cb(res);}
+        if (_scope.cb) {
+            _scope.cb(res);
+        }
         _scope.res = res || {};
     };
     var error = function(errorRes) {
-         if(_scope.errorCb) {_scope.errorCb(errorRes);}
+        if (_scope.errorCb) {
+            _scope.errorCb(errorRes);
+        }
         _scope.errorRes = errorRes || {};
     };
     cb(resolve, error);

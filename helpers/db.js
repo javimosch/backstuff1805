@@ -1,4 +1,7 @@
+require('es6-promise').polyfill();
 var mongoose = require('mongoose');
+
+var Schema = mongoose.Schema;
 
 // Build the connection string 
 var dbURI = 'mongodb://root:root@ds059165.mongolab.com:59165/inspectors'; 
@@ -32,84 +35,60 @@ process.on('SIGINT', function() {
 
 
 ///SCHEMAS
-mongoose.model('Cat', { name: String });
-
-mongoose.model('Diag', { 
-    userId:String,
-    
-});
-
 mongoose.model('User', { 
     email: String,
+    userType: {type:String, default: 'admin'}, //admin client diag
     password: String,
     firstName:String,
     lastName:String,
-    type: {type:String, default: 'admin'} //admin client diag
-});
-
-
-mongoose.model('Client', { 
-    type: {type:String,default:'Landlord'}, //(Landlord / Agency / Foncière)
-    address: String,
+    passwordSended:{type:Boolean,default:false},
+    address:String, 
     tel: String,
+    _orders:[{ type: Schema.Types.ObjectId, ref: 'Order' }],
+
+    //DIAG
+    postCode:String,
+    department:String,
+    region:String,
+    city:String,
+    diplomes:[],
+    comission:Number,
+
+    //CLIENT
+    clientType: {type:String}, //(Landlord / Agency / Foncière)
     siret: String,
     discount: {type:Number,default:0},
-    email: String,
-    userId: String,
-    //password: String,
+    
     createdAt:{type:Date,default:Date.now},
-    updatedAt:{type:Date,default:Date.now},
-    passwordSended:{type:Boolean,default:false},
+    updatedAt:{type:Date,default:Date.now}
 });
-/*
-Type (Landlord / Agency / Foncière)
-Adress
-Tel
-Siret (not needed if landlord)
-Discount (admin decide it)
-Mail (unique)
-password
-*/
+
 
 mongoose.model('Order', { 
-    inspectorId: String,
-    clientId: String,
+    _diag:{ type: Schema.Types.ObjectId, ref: 'User' },
+    _client:{ type: Schema.Types.ObjectId, ref: 'User' },
     diags: Array,
     address:String, //may differ from client address
     info: Array,
     obs: String,
-    date: Date, //date of diag (combine date and time choiced)
-    createdAt:{type:Date,default:Date.now},
-    updatedAt:{type:Date,default:Date.now},
-    status: String,
+    diagStart: Date,
+    diagEnd: Date,
+    status: {type:String,default:'ordered'},
     price: Number,
-    time: String, //estimated time.
-    commision: {type:Number,default:0}, //
-    pdfId: String
+//    time: String, //estimated time.
+    fastDiagComm: {type:Number,default:0}, //
+    pdfId: String,
+    createdAt:{type:Date,default:Date.now},
+    updatedAt:{type:Date,default:Date.now}
 });
+
 /*
-Commande
-ID
-ID client
-Liste de diags
-Landlord Adress
-Landlord Phonenumber
-Diag adress
-Informations
-Observation
-Date de commande
-date du diag
-Heure début diag
-Heure fin diag
-ID Diagnostiqueur
-Statut (commandé/livré)
-Total Price
-Total Diag
-FastDiag Comm
-PDF Diag
-
-*/
-
+        status:
+            - ordered //just created 
+            - prepaid //client paid first. When upload pdf -> complete
+            - delivered // PDF uploaded first. When client paid -> complete
+            - complete
+        */
 
 
 exports.mongoose = mongoose;

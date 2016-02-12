@@ -52,9 +52,9 @@ function save(data, callback) {
 
     function _save(instance) {
         instance = instance || new Diag(data);
-        instance.type = data.type || instance.type || 'client';
-        instance.email = data.email || null;
-        instance.password = data.password || generatePassword(8);
+        for (var x in data) {
+            instance[x] = data[x];
+        }
         console.log('DIAG:SAVE:SAVING');
         instance.save(function(err, instance) {
             if (err) return callback(handleError(err));
@@ -67,21 +67,18 @@ function save(data, callback) {
     }
 }
 
-function getAll(callback) {
-    Diag.find(function(err, r) {
-        if (err) return callback(handleError(err));
-        if (r && r.length >= 1) {
-            callback({
-                message: 'Retrieved success',
-                result: r
-            });
-        } else {
-            callback({
-                message: 'Retrieved failed. Item not found.',
-                result: []
-            });
-        }
-    });
+function getAll(data, callback) {
+    var rules = {};
+    for (var x in data) {
+        rules[x] = {
+            $eq: data[x]
+        };
+    }
+    Diag.find(rules)
+    .populate( '_user', 'email')
+    .exec((err, r) => {
+        callback({ ok: !err, err: err, message: r.length + " Object/s", result: r });
+    });    
 }
 
 
@@ -165,14 +162,20 @@ function removeAll(data, callback) {
     }
 }
 
-function find(data,callback){
+function find(data, callback) {
     var rules = {};
-    for(var x in data){
-        rules[x]={$eq:data[x]};
+    for (var x in data) {
+        rules[x] = {
+            $eq: data[x]
+        };
     }
-    Diag.find(rules,function(err,r){
+    Diag.find(rules, function(err, r) {
         if (err) return callback(handleError(err));
-        return callback({ok:true,message:'Query success',result:r});
+        return callback({
+            ok: true,
+            message: 'Query success',
+            result: r
+        });
     });
 }
 
@@ -181,7 +184,7 @@ exports.actions = {
     save: save,
     remove: remove,
     removeAll: removeAll,
-    find:find
+    find: find
 };
 
 
@@ -204,7 +207,7 @@ exports.login = function(req, res) {
                 result: {
                     email: data.email,
                     password: data.password,
-                    type : item.type,
+                    type: item.type,
                     expire: new Date().getTime() + (1000 * 60) * 120
                 }
             });
@@ -234,7 +237,7 @@ exports.get = function(req, res) {
 };
 
 exports.getAll = function(req, res) {
-    getAll(function(rta) {
+    getAll(req.body | {}, function(rta) {
         res.json(rta);
     });
 };

@@ -1,0 +1,1 @@
+curl --data "" http://localhost:5000/$1/getAll

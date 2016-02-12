@@ -10,13 +10,18 @@
   "license": "ISC",
   "dependencies": {
     "body-parser": "^1.14.2",
+    "btoa": "^1.1.2",
+    "es6-promise": "^3.0.2",
     "express": "^4.13.4",
     "express-cors": "0.0.3",
     "lodash": "^4.3.0",
+    "mailcomposer": "^3.6.2",
+    "mailgun-js": "^0.7.7",
     "moment": "^2.11.2",
     "mongoose": "^4.4.2",
     "password-maker": "^1.1.2",
-    "passy": "^0.8.2"
+    "request": "^2.69.0",
+    "string": "^3.3.1"
   },
   "devDependencies": {
     "browser-sync": "^2.11.1",

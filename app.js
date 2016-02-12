@@ -4,7 +4,7 @@ var bodyParser = require('body-parser')
 
 
 require('./helpers/db');
-var configureRoutes = require('./helpers/routes').configure;
+var configureRoutes = require('./helpers/handle.routes').configure;
 
 var app = express();
 app.use(bodyParser());

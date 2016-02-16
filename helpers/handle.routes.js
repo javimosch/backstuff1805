@@ -4,6 +4,7 @@ var order = require('./handlers.order');
 //var path = require("path");
 //var request = require('request');
 //var configureTemplateRoutes = require('../templates/templates').configure;
+var createController = require('./handler.actions').create;
 
 exports.configure = function(app) {
 
@@ -41,6 +42,24 @@ exports.configure = function(app) {
 
     user.routes(app);
     order.routes(app);
+
+
+    app.get('/ctrl/:controller/:action',function(req,res){
+        var controller = req.params.controller;
+        var action = req.params.action;
+        var data = req.body;
+        var actions = createController(controller);
+        actions[action](data,actions.result(res));
+    });
+
+    app.post('/ctrl/:controller/:action',function(req,res){
+        var controller = req.params.controller;
+        var action = req.params.action;
+        var data = req.body;
+        var actions = createController(controller);
+        actions[action](data,actions.result(res));
+    });
+
     app.post('/custom', function(req, res) {
         var d = req.body;
         mongoose.model(d.model)[d.action](d.data, function(err, result) {
@@ -51,5 +70,7 @@ exports.configure = function(app) {
             });
         });
     });
+
+
     console.log('routes-loaded');
 };

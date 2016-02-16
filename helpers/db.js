@@ -33,6 +33,14 @@ process.on('SIGINT', function() {
   }); 
 }); 
 
+mongoose.model('TimeRange',{
+    _user:{ type: Schema.Types.ObjectId, ref: 'User' ,required:true},
+    description: {type:String,required:false},
+    type:{type:String,required:true, default:'work-exception'},
+    start:{type:Date,required:true},
+    end:{type:Date,required:true},
+    repeat: {type:String,required:true} //day, week, none
+});
 
 ///SCHEMAS
 mongoose.model('User', { 

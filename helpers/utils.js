@@ -17,7 +17,8 @@ function MyPromise(cb) {
         cb: null,
         errorCb: null,
         errorRes: null,
-        res: null
+        res: null,
+        evt:{}
     };
     var resolve = function(res) {
         if (_scope.cb) {
@@ -31,7 +32,14 @@ function MyPromise(cb) {
         }
         _scope.errorRes = errorRes || {};
     };
-    cb(resolve, error);
+    var emit = function(n,err,r){
+        _scope.evt[n] = _scope.evt[n] || {};
+        _scope.evt[n].res = {err:err,r:r};
+        if(_scope.evt[n].cb!==undefined){
+            _scope.evt[n].cb(_scope.evt[n].res.err,_scope.evt[n].res.r);
+        }
+    };
+    cb(resolve, error,emit);
     rta = {
         then: function(cb) {
             if (_scope.res) cb(_scope.res);
@@ -41,6 +49,14 @@ function MyPromise(cb) {
         error: function(errorCb) {
             if (_scope.errorRes) errorCb(_scope.errorRes);
             else _scope.errorCb = errorCb;
+            return rta;
+        },
+        on:function(n,cb){
+            _scope.evt[n] = _scope.evt[n]  || {};
+            _scope.evt[n].cb = cb;
+            if(_scope.evt[n].res !== undefined){
+                _scope.evt[n].cb(_scope.evt[n].res.err,_scope.evt[n].res.r);
+            }
             return rta;
         }
     };

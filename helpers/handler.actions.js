@@ -1,5 +1,6 @@
 var mongoose = require('./db').mongoose;
 var validate = require('./validator').validate;
+var promise = require('./utils').promise;
 
 exports.create = function(modelName) {
     var Model = mongoose.model(modelName);
@@ -22,45 +23,52 @@ exports.create = function(modelName) {
         var data = {};
         data[name] = val;
         Model.count(toRules(data), (err, r) => {
-            log('existsByField=' + (r && r>0));
+            log('existsByField=' + (r && r > 0));
             cb(err, r && r > 0);
         });
     }
     //
-    function createUpdate(data, cb, matchData,requiredKeys) {
-        log('save=' + JSON.stringify(data));
-        check(data, requiredKeys || [], (err, r) => {
-            if (err) return cb(err, null);
-            if (data._id) {
-                data.updatedAt = new Date();
-                var _id = data._id;
-                delete data._id;
-                return Model.findByIdAndUpdate(_id, data).exec(cb);
-            }
-            matchData  = matchData || {};
-            if (Object.keys(matchData).length>0) {
-                return Model.findOne(toRules(matchData)).exec((err, r) => {
-                    if (err) return cb(err, null);
-                    if (r) {
-                        for (var x in data) {
-                            r[x] = data[x];
+    function createUpdate(data, cb, matchData, requiredKeys) {
+        return promise((then, error, emit) => {
+            //
+            log('save=' + JSON.stringify(data));
+            check(data, requiredKeys || [], (err, r) => {
+                if (err) return cb(err, null);
+                if (data._id) {
+                    data.updatedAt = new Date();
+                    var _id = data._id;
+                    delete data._id;
+                    return Model.findByIdAndUpdate(_id, data).exec(cb);
+                }
+                matchData = matchData || {};
+                if (Object.keys(matchData).length > 0) {
+                    return Model.findOne(toRules(matchData)).exec((err, r) => {
+                        if (err) return cb(err, null);
+                        if (r) {
+                            for (var x in data) {
+                                r[x] = data[x];
+                            }
+                            return r.save(cb);
+                        } else {
+                            _create(data, (err, r) => {
+                                emit('created', err, r);
+                                cb(err, r);
+                            }, requiredKeys);
                         }
-                        return r.save(cb);
-                    } else {
-                        _create(data, cb,requiredKeys);
-                    }
-                })
-            } else {
-                _create(data, cb,requiredKeys);
-            }
+                    })
+                } else {
+                    _create(data, cb, requiredKeys);
+                }
+            });
+            //
         });
     }
 
     function getAll(data, cb) {
         log('getAll=' + JSON.stringify(data));
         var query = Model.find(toRules(data))
-        if(data.__populate){
-            query = query.populate(data.__populate[0],data.__populate[1]);
+        if (data.__populate) {
+            query = query.populate(data.__populate[0], data.__populate[1]);
         }
         query.exec(cb);
     }
@@ -93,8 +101,8 @@ exports.create = function(modelName) {
         //check(data, ['_id'], (err, r) => {
         //  if (err) return cb(err, r);
         var query = Model.findOne(toRules(data))
-        if(data.__populate){
-            query = query.populate(data.__populate[0],data.__populate[1]);
+        if (data.__populate) {
+            query = query.populate(data.__populate[0], data.__populate[1]);
         }
         query.exec((err, r) => {
             if (err) return cb(err, r);
@@ -139,13 +147,25 @@ exports.create = function(modelName) {
         data = data || {};
         var rules = {};
         for (var x in data) {
-            if(x.indexOf('__')!==-1){
-                continue; //__ represents a special command.
+            if (x.indexOf('__') !== -1) {
+                if (x == '__$where') {
+                    for (var k in data[x]) {
+                        rules[k] = { $where: data[x][k] };
+                    }
+                }
+                if (x == '__regexp') {
+                    for (var k in data[x]) {
+                        rules[k] = new RegExp(data[x][k], 'i');
+                        log('toRules:exp'+data[x][k]);
+                    }
+                }
+            } else {
+                rules[x] = {
+                    $eq: data[x]
+                };
             }
-            rules[x] = {
-                $eq: data[x]
-            };
         }
+        log('toRules:' + JSON.stringify(rules));
         return rules;
     }
 

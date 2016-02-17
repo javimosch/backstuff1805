@@ -47,8 +47,14 @@ exports.configure = function(app) {
     app.get('/ctrl/:controller/:action',function(req,res){
         var controller = req.params.controller;
         var action = req.params.action;
-        var data = req.body;
+        var data = req.params;
         var actions = createController(controller);
+        if(controller == 'User'){
+            Object.assign(actions,user.actions);
+        }
+        if(controller == 'Order'){
+            Object.assign(actions,order.actions);
+        }
         actions[action](data,actions.result(res));
     });
 
@@ -57,6 +63,12 @@ exports.configure = function(app) {
         var action = req.params.action;
         var data = req.body;
         var actions = createController(controller);
+        if(controller == 'User'){
+            Object.assign(actions,user.actions);
+        }
+        if(controller == 'Order'){
+            Object.assign(actions,order.actions);
+        }
         actions[action](data,actions.result(res));
     });
 

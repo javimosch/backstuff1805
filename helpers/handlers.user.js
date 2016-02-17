@@ -10,7 +10,23 @@ var email = require('./handlers.email').actions;
 function save(data, cb) {
     actions.createUpdate(data, cb, {
         email: data.email
-    },['userType','email']);
+    }, ['userType', 'email']).on('created', (err, _user) => {
+        var notify = null;
+        switch (_user.userType) {
+            case 'admin':
+                notify = email.adminNewAccount;
+                break;
+            case 'diag':
+                notify = email.diagNewAccount;
+                break;
+            case 'client':
+                notify = email.clientNewAccount;
+                break;
+        }
+        if (notify) {
+            notify(_user, (err,r)=>email.handleSend(_user,err,r));
+        }
+    });
 }
 
 function create(data, cb) {
@@ -27,29 +43,45 @@ function createUser(data, cb) {
 function createDiag(data, cb) {
     actions.log('createDiag=' + JSON.stringify(data));
     data.userType = 'diag';
-    createUser(data, cb);
+    createUser(data, (err, _user) => {
+        if (err) return cb(err, null);
+        email.diagNewAccount(_user, (err, r) => {
+            //async (write log on error)
+            if (r.ok) {
+                actions.log(_user.email + ' new account email sended' + JSON.stringify(r));
+                _user.passwordSended = true;
+                _user.save((err, r) => {
+                    if (!err) actions.log(_user.email + ' passwordSended=true');
+                });
+            } else {
+                actions.log(_user.email + ' new account email sended failed');
+                actions.log(JSON.stringify(err));
+            }
+        });
+        return cb(err, _user);
+    });
 }
 
 function createClient(data, cb) {
     actions.log('createClient=' + JSON.stringify(data));
     data.userType = 'client';
     data.clientType = data.clientType || 'LandLord';
-    createUser(data, (err,_user)=>{
+    createUser(data, (err, _user) => {
         if (err) return cb(err, null);
-        email.clientNewAccount(_user,(err,r)=>{
+        email.clientNewAccount(_user, (err, r) => {
             //async (write log on error)
-            if(r.ok){
-                actions.log(_user.email+' new account email sended'+ JSON.stringify(r));
+            if (r.ok) {
+                actions.log(_user.email + ' new account email sended' + JSON.stringify(r));
                 _user.passwordSended = true;
-                _user.save((err,r)=>{
-                    if (!err) actions.log(_user.email+' passwordSended=true');
+                _user.save((err, r) => {
+                    if (!err) actions.log(_user.email + ' passwordSended=true');
                 });
-            }else{
-                actions.log(_user.email+' new account email sended failed');
+            } else {
+                actions.log(_user.email + ' new account email sended failed');
                 actions.log(JSON.stringify(err));
             }
         });
-        return cb(err,_user);
+        return cb(err, _user);
     });
 }
 
@@ -57,12 +89,12 @@ function createClientIfNew(data, cb) {
     actions.log('createClientIfNew=' + JSON.stringify(data));
     actions.check(data, ['email'], (err, r) => {
         if (err) return cb(err, null);
-        actions.get({email:data.email}, (err, r) => {
+        actions.get({ email: data.email }, (err, r) => {
             if (err) return cb(err, null);
             if (!r) {
                 createClient(data, cb);
-            }else{
-                cb(null,r);
+            } else {
+                cb(null, r);
             }
         });
     });
@@ -82,6 +114,7 @@ exports.actions = {
     save: save,
     createClientIfNew: createClientIfNew,
     login: login,
+    createDiag: createDiag,
     //heredado
     existsById: actions.existsById,
     existsByField: actions.existsByField,

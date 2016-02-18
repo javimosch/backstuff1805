@@ -4,6 +4,7 @@ var Order = require('./handler.actions').create('Order');
 var User = require('./handler.actions').create('Order');
 var getFile = require('./utils').getFile;
 var sendEmail = require('./utils.mailing').sendEmail;
+var moment = require('moment');
 var S = require('string');
 var btoa = require('btoa')
 
@@ -14,6 +15,12 @@ var actions = {
     }
 };
 
+
+function adminUrl(join) {
+    var url = process.env.adminURL || 'http://localhost:3000/admin#' + join;
+    url = url.replace('//', '/');
+    return url;
+}
 
 function replace(html, params) {
     html = S(html);
@@ -50,9 +57,35 @@ function send(opt) {
         subject: 'Diag Project | ' + opt.subject
     };
     sendEmail(data, (err, r) => {
-        opt.cb(err, r);
+        if (opt.cb) {
+            opt.cb(err, r);
+        } else {
+            //LOG
+        }
     });
 }
+
+function time(d) {
+    return moment(d).format('HH:mm');
+}
+
+function newOrder(_user, _order, cb) {
+    actions.log('newOrder=' + JSON.stringify(_user));
+    send({
+        to: _user.email,
+        subject: "New Order",
+        templateName: 'new.order.created',
+        templateReplace: {
+            '$NAME': _user.firstName || _user.email,
+            '$ORDER_URL': adminUrl('/orders/edit/' + _order._id),
+            '$ORDER_DESCR': _order.address + ' (' + time(_order.diagStart) + ' - ' + time(_order.diagEnd) + ')',
+            '$PASSWORD': _user.password || '[Contact support for the password]',
+            '$URL': url('?email=' + _user.email + '&k=' + btoa(_user.password))
+        },
+        cb: cb
+    });
+}
+
 
 function diagNewAccount(_user, cb) {
     actions.log('diagNewAccount=' + JSON.stringify(_user));
@@ -99,7 +132,7 @@ function clientNewAccount(_user, cb) {
     });
 }
 
-function handleSend(_user,err, r) {
+function handleNewAccount(_user, err, r) {
     //async (write log on error)
     if (r.ok) {
         actions.log(_user.email + ' new account email sended' + JSON.stringify(r));
@@ -117,5 +150,6 @@ exports.actions = {
     clientNewAccount: clientNewAccount,
     diagNewAccount: diagNewAccount,
     adminNewAccount: adminNewAccount,
-    handleSend:handleSend
+    handleNewAccount: handleNewAccount,
+    newOrder:newOrder
 };

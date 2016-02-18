@@ -75,14 +75,14 @@ mongoose.model('User', {
 mongoose.model('Order', { 
     _diag:{ type: Schema.Types.ObjectId, ref: 'User' },
     _client:{ type: Schema.Types.ObjectId, ref: 'User' },
-    diags: Array,
-    address:String, //may differ from client address
+    diags: {type: {}, required:true},
+    address:{type:String,required:true}, 
     info: Array,
     obs: String,
-    diagStart: Date,
-    diagEnd: Date,
+    diagStart: {type:Date,required:true},
+    diagEnd: {type:Date,required:true},
     status: {type:String,default:'ordered'},
-    price: Number,
+    price: {type:String,required:true,default:0},
 //    time: String, //estimated time.
     fastDiagComm: {type:Number,default:0}, //
     pdfId: String,

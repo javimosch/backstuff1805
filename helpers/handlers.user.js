@@ -9,7 +9,8 @@ var email = require('./handlers.email').actions;
 
 function save(data, cb) {
     actions.createUpdate(data, cb, {
-        email: data.email
+        email: data.email,
+        userType:data.userType
     }, ['userType', 'email']).on('created', (err, _user) => {
         var notify = null;
         switch (_user.userType) {
@@ -24,7 +25,7 @@ function save(data, cb) {
                 break;
         }
         if (notify) {
-            notify(_user, (err,r)=>email.handleSend(_user,err,r));
+            notify(_user, (err,r)=>email.handleNewAccount(_user,err,r));
         }
     });
 }

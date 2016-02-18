@@ -51,24 +51,40 @@ exports.create = function(modelName) {
                             return r.save(cb);
                         } else {
                             _create(data, (err, r) => {
+                                if (err) return cb(err, null);
                                 emit('created', err, r);
                                 cb(err, r);
                             }, requiredKeys);
                         }
                     })
                 } else {
-                    _create(data, cb, requiredKeys);
+                    _create(data, (err,r)=>{
+                        if (err) return cb(err, null);
+                        emit('created', err, r);    
+                        cb(err,r);
+                    }, requiredKeys);
                 }
             });
             //
         });
     }
 
+    function populate(query, p) {
+        if (p.length) {
+            query = query.populate(p[0], p[1]);
+        } else {
+            Object.keys(p).forEach((k) => {
+                query = query.populate(k, p[k]);
+            });
+        }
+        return query;
+    }
+
     function getAll(data, cb) {
         log('getAll=' + JSON.stringify(data));
         var query = Model.find(toRules(data))
         if (data.__populate) {
-            query = query.populate(data.__populate[0], data.__populate[1]);
+            query = populate(query, data.__populate);
         }
         query.exec(cb);
     }
@@ -102,7 +118,7 @@ exports.create = function(modelName) {
         //  if (err) return cb(err, r);
         var query = Model.findOne(toRules(data))
         if (data.__populate) {
-            query = query.populate(data.__populate[0], data.__populate[1]);
+            query = populate(query, data.__populate);
         }
         query.exec((err, r) => {
             if (err) return cb(err, r);
@@ -156,7 +172,7 @@ exports.create = function(modelName) {
                 if (x == '__regexp') {
                     for (var k in data[x]) {
                         rules[k] = new RegExp(data[x][k], 'i');
-                        log('toRules:exp'+data[x][k]);
+                        log('toRules:exp' + data[x][k]);
                     }
                 }
             } else {

@@ -10,7 +10,6 @@ var User = mongoose.model('User');
 var Order = mongoose.model('Order');
 var actions = require('./handler.actions').create('Order');
 var UserAction = require('./handlers.user').actions;
-var UserAction = require('./handlers.user').actions;
 
 
 var email = require('./handlers.email').actions;
@@ -29,7 +28,21 @@ function save(data, cb) {
     actions.createUpdate(data, (err, r) => {
         if (err) return cb(err, null);
         cb(err, r);
-    }, {}, saveKeys);
+    }, {}, saveKeys).on('created', (err, _order) => {
+        
+        UserAction.get({_id:_order._client._id || _order._client},(err,_client)=>{
+            email.newOrder(_client,_order,null); 
+        });
+        UserAction.get({_id:_order._diag._id || _order._diag},(err,_diag)=>{
+            email.newOrder(_diag,_order,null); 
+        });
+        UserAction.getAll({userType:'admin'},(err,_admins)=>{
+            _admins.forEach((_admin)=>{
+                email.newOrder(_admin,_order,null);     
+            })
+        });
+
+    });
 }
 
 function saveWithEmail(data, cb) {

@@ -187,6 +187,9 @@ exports.create = function(modelName) {
                 };
             }
         }
+        if(data.__rules){
+            rules = Object.assign(rules,data.__rules);
+        }
         log('toRules:' + JSON.stringify(rules));
         return rules;
     }

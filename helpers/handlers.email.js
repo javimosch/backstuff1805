@@ -80,7 +80,7 @@ function newOrder(_user, _order, cb) {
             '$ORDER_URL': adminUrl('/orders/edit/' + _order._id),
             '$ORDER_DESCR': _order.address + ' (' + time(_order.diagStart) + ' - ' + time(_order.diagEnd) + ')',
             '$PASSWORD': _user.password || '[Contact support for the password]',
-            '$URL': url('?email=' + _user.email + '&k=' + btoa(_user.password))
+            '$URL': adminUrl('?email=' + _user.email + '&k=' + btoa(_user.password))
         },
         cb: cb
     });

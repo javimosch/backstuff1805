@@ -10,7 +10,7 @@ var email = require('./handlers.email').actions;
 function save(data, cb) {
     actions.createUpdate(data, cb, {
         email: data.email,
-        userType:data.userType
+        userType: data.userType
     }, ['userType', 'email']).on('created', (err, _user) => {
         var notify = null;
         switch (_user.userType) {
@@ -25,7 +25,7 @@ function save(data, cb) {
                 break;
         }
         if (notify) {
-            notify(_user, (err,r)=>email.handleNewAccount(_user,err,r));
+            notify(_user, (err, r) => email.handleNewAccount(_user, err, r));
         }
     });
 }
@@ -69,20 +69,24 @@ function createClient(data, cb) {
     data.clientType = data.clientType || 'LandLord';
     createUser(data, (err, _user) => {
         if (err) return cb(err, null);
-        email.clientNewAccount(_user, (err, r) => {
-            //async (write log on error)
-            if (r.ok) {
-                actions.log(_user.email + ' new account email sended' + JSON.stringify(r));
-                _user.passwordSended = true;
-                _user.save((err, r) => {
-                    if (!err) actions.log(_user.email + ' passwordSended=true');
-                });
-            } else {
-                actions.log(_user.email + ' new account email sended failed');
-                actions.log(JSON.stringify(err));
-            }
-        });
+        sendAccountsDetails(_user);
         return cb(err, _user);
+    });
+}
+
+function sendAccountsDetails(_user) {
+    email.clientNewAccount(_user, (err, r) => {
+        //async (write log on error)
+        if (r.ok) {
+            actions.log(_user.email + ' new account email sended' + JSON.stringify(r));
+            _user.passwordSended = true;
+            _user.save((err, r) => {
+                if (!err) actions.log(_user.email + ' passwordSended=true');
+            });
+        } else {
+            actions.log(_user.email + ' new account email sended failed');
+            actions.log(JSON.stringify(err));
+        }
     });
 }
 
@@ -95,6 +99,14 @@ function createClientIfNew(data, cb) {
             if (!r) {
                 createClient(data, cb);
             } else {
+
+                //in 10 seconds, try send account details if passwordSended==false
+                setTimeout(function() {
+                    if (!r.passwordSended) {
+                        sendAccountsDetails(r);
+                    }
+                }, 10000);
+
                 cb(null, r);
             }
         });

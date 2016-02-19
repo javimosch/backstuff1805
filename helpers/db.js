@@ -96,7 +96,7 @@ mongoose.model('Order', {
             - ordered //just created 
             - prepaid //client paid first. When upload pdf -> complete
             - delivered // PDF uploaded first. When client paid -> complete
-            - complete
+            - completed
         */
 
 

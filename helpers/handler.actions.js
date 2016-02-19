@@ -83,6 +83,9 @@ exports.create = function(modelName) {
     function getAll(data, cb) {
         log('getAll=' + JSON.stringify(data));
         var query = Model.find(toRules(data))
+        if(data.__select){
+            query = query.select(data.__select);
+        }
         if (data.__populate) {
             query = populate(query, data.__populate);
         }
@@ -117,6 +120,9 @@ exports.create = function(modelName) {
         //check(data, ['_id'], (err, r) => {
         //  if (err) return cb(err, r);
         var query = Model.findOne(toRules(data))
+        if(data.__select){
+            query = query.select(data.__select);
+        }
         if (data.__populate) {
             query = populate(query, data.__populate);
         }

@@ -49,7 +49,7 @@ function saveWithEmail(data, cb) {
     actions.log('saveWithEmail=' + JSON.stringify(data));
     actions.check(data, ['email', '_diag', 'diagStart', 'diagEnd'
 
-        , 'diags', 'address', 'price', 'time'
+        , 'diags', 'address', 'price' //, 'time'
     ], (err, r) => {
         if (err) return cb(err, null);
         UserAction.get({

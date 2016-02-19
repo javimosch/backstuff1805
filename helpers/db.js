@@ -55,6 +55,7 @@ mongoose.model('User', {
     _orders:[{ type: Schema.Types.ObjectId, ref: 'Order' }],
 
     //DIAG
+    diagPriority:{type:Number},
     postCode:String,
     department:String,
     region:String,

@@ -41,14 +41,14 @@ function template(n, replaceParams) {
 }
 
 function dummy(cb) {
-    cb({
+    cb(null,{
         ok: true,
         message: 'Mailing disabled'
     });
 }
 
 function send(opt) {
-    if (process.env.disableMailing == false || false) return dummy(opt.cb);
+    if (process.env.disableMailing === '1') return dummy(opt.cb);
     var html = template(opt.templateName, opt.templateReplace);
     var data = {
         html: html,

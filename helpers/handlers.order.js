@@ -29,19 +29,37 @@ function save(data, cb) {
         if (err) return cb(err, null);
         cb(err, r);
     }, {}, saveKeys).on('created', (err, _order) => {
-        
-        UserAction.get({_id:_order._client._id || _order._client},(err,_client)=>{
-            email.newOrder(_client,_order,null); 
+
+        UserAction.get({ _id: _order._client._id || _order._client }, (err, _client) => {
+            email.newOrder(_client, _order, null);
         });
-        UserAction.get({_id:_order._diag._id || _order._diag},(err,_diag)=>{
-            email.newOrder(_diag,_order,null); 
+        UserAction.get({ _id: _order._diag._id || _order._diag }, (err, _diag) => {
+            email.newOrder(_diag, _order, null);
         });
-        UserAction.getAll({userType:'admin'},(err,_admins)=>{
-            _admins.forEach((_admin)=>{
-                email.newOrder(_admin,_order,null);     
+        UserAction.getAll({ userType: 'admin' }, (err, _admins) => {
+            _admins.forEach((_admin) => {
+                email.newOrder(_admin, _order, null);
             })
         });
 
+    });
+}
+
+function orderExists(data,cb) {
+    actions.log('orderExists=' + JSON.stringify(data));
+    //Si existe un order match user:email, address, start, end, price.
+    actions.get({
+        address:data.address,
+        diagStart:data.diagStart,
+        diagEnd:data.diagEnd,
+        __populate:{'_client':'email'}
+    },(err,r)=>{
+        if (err) return cb(err, null);
+        if(r && r._client.email == data.email){
+            cb("ORDER_EXISTS",null);
+        }else{
+            cb(null,null); //
+        }
     });
 }
 
@@ -52,25 +70,30 @@ function saveWithEmail(data, cb) {
         , 'diags', 'address', 'price' //, 'time'
     ], (err, r) => {
         if (err) return cb(err, null);
-        UserAction.get({
-            email: data.email,
-            type: 'client'
-        }, (err, r) => {
+        //
+        orderExists(data,(err, r) => {
             if (err) return cb(err, null);
-            actions.log('saveWithEmail=user:get:return' + JSON.stringify(r));
-            if (r) {
-                data._client = r._id;
-                return save(data, cb);
-            } else {
-                UserAction.createClientIfNew({
-                    email: data.email
-                }, (err, r) => {
-                    if (err) return cb(err, null);
+            UserAction.get({
+                email: data.email,
+                type: 'client'
+            }, (err, r) => {
+                if (err) return cb(err, null);
+                actions.log('saveWithEmail=user:get:return' + JSON.stringify(r));
+                if (r) {
                     data._client = r._id;
                     return save(data, cb);
-                });
-            }
+                } else {
+                    UserAction.createClientIfNew({
+                        email: data.email
+                    }, (err, r) => {
+                        if (err) return cb(err, null);
+                        data._client = r._id;
+                        return save(data, cb);
+                    });
+                }
+            });
         });
+        //    
     });
 }
 

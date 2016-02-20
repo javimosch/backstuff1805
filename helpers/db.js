@@ -83,7 +83,7 @@ mongoose.model('Order', {
     diagStart: {type:Date,required:true},
     diagEnd: {type:Date,required:true},
     status: {type:String,default:'ordered'},
-    price: {type:String,required:true,default:0},
+    price: {type:Number,required:true,default:0},
 //    time: String, //estimated time.
     fastDiagComm: {type:Number,default:0}, //
     pdfId: String,

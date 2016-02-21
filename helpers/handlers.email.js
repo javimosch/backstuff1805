@@ -8,6 +8,8 @@ var moment = require('moment');
 var S = require('string');
 var btoa = require('btoa')
 
+var adminUrl = require('./utils').adminUrl;
+
 var modelName = 'email';
 var actions = {
     log: (m) => {
@@ -16,11 +18,6 @@ var actions = {
 };
 
 
-function adminUrl(join) {
-    var url = process.env.adminURL || 'http://localhost:3000/admin#' + join;
-    url = url.replace('//', '/');
-    return url;
-}
 
 function replace(html, params) {
     html = S(html);

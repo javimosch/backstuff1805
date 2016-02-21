@@ -1,6 +1,12 @@
 var fs = require("fs"),
     json;
 
+var moment = require('moment');
+
+exports.formatTime = (d)=>{
+    return moment(d).format('HH:mm');
+};
+
 function readFileSync(file, encoding, json) {
     var filepath = __dirname + '/' + file;
     if (typeof(encoding) == 'undefined') {
@@ -11,6 +17,16 @@ function readFileSync(file, encoding, json) {
 }
 exports.getJSON = (file) => readFileSync(file,undefined, true);
 exports.getFile = (file) => readFileSync(file,undefined, false);
+
+
+//routing
+function adminUrl(join) {
+    var url = process.env.adminURL || 'http://localhost:3000/admin#' + join;
+    url = url.replace('//', '/');
+    return url;
+}
+exports.adminUrl = adminUrl;
+
 
 function MyPromise(cb) {
     var _scope = {

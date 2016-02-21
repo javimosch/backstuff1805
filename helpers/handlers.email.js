@@ -41,10 +41,15 @@ function template(n, replaceParams) {
 }
 
 function dummy(cb) {
-    cb(null,{
+    var rta = {
         ok: true,
         message: 'Mailing disabled'
-    });
+    };
+    if (cb) {
+        cb(null, rta);
+    } else {
+        actions.log('INFO=' + JSON.stringify(rta));
+    }
 }
 
 function send(opt) {
@@ -151,5 +156,5 @@ exports.actions = {
     diagNewAccount: diagNewAccount,
     adminNewAccount: adminNewAccount,
     handleNewAccount: handleNewAccount,
-    newOrder:newOrder
+    newOrder: newOrder
 };

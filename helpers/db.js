@@ -54,6 +54,12 @@ mongoose.model('User', {
     tel: String,
     _orders:[{ type: Schema.Types.ObjectId, ref: 'Order' }],
 
+    city:String,
+    country:String,
+    zipCode:String,
+
+    stripeCustomer:{type:String,default:null},
+
     //DIAG
     diagPriority:{type:Number},
     postCode:String,

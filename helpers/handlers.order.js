@@ -11,6 +11,7 @@ var Order = mongoose.model('Order');
 var actions = require('./handler.actions').create('Order');
 var UserAction = require('./handlers.user').actions;
 
+var payment = require('./handlers.payment').actions;
 
 var email = require('./handlers.email').actions;
 
@@ -18,6 +19,95 @@ var saveKeys = ['_client', '_diag', 'diagStart', 'diagEnd', 'diags'
 
     , 'address', 'price' //, 'time'
 ];
+
+function pay(data, cb) {
+    actions.log('pay=' + JSON.stringify(data));
+    actions.check(data, ['stripeToken'], (err, r) => {
+        if (err) return cb(err, null);
+        //
+        UserAction.get({ _id: data._client._id }, (err, _user) => {
+            if (err) return cb(err, null);
+            if (_user.stripeCustomer) {
+                data.stripeCustomer = _user.stripeCustomer;
+                _pay();
+            } else {
+                _user.stripeToken = data.stripeToken;
+                payment.createCustomer(_user, (err, stripeCustomer) => {
+                    if (err) return cb(err, null);
+                    _user.stripeCustomer = stripeCustomer.id;
+                    data.stripeCustomer = stripeCustomer.id;
+                    _user.save();
+                    _pay();
+                });
+            }
+        });
+
+        function _pay() {
+            payment.payOrder(data, (err, _charge) => {
+                if (err) return cb(err, null);
+                //Change status to prepaid  (sync)
+                actions.get({ _id: data._id }, (err, _order) => {
+                    if (_order.status == 'delivered') {
+                        _order.status = 'completed';
+                    } else {
+                        _order.status = 'prepaid';
+                    }
+                    _order.save((err, r) => {
+                        if (err) return cb(err, null);
+                        _success();
+                    });
+                });
+                //
+                function _success() {
+                    cb(null, {
+                        ok: true,
+                        message: "Pay successs",
+                        result: _charge
+                    });
+                }
+            });
+        }
+        //
+    });
+}
+
+function syncStripe(data, cb) {
+    actions.log('syncPayments:start=' + JSON.stringify(data));
+    UserAction.getAll({
+        __rules: {
+            stripeCustomer: { $ne: null }
+        }
+    }, (err, _users) => {
+        if (err) return cb(err, null);
+        _users.forEach((_user) => {
+            payment.listCustomerCharges({ stripeCustomer: _user.stripeCustomer }, (err, _charge) => {
+                if (err) return cb(err, null);
+                _charge = _charge.data[0];
+                actions.log('syncPayments:charge=' + JSON.stringify(_charge.metadata));
+
+                Order.update({
+                    _id:{$eq:_charge.metadata._order},
+                    status:{$in:['ordered']}
+                },{
+                    status:'prepaid'
+                }).exec();
+                Order.update({
+                    _id:{$eq:_charge.metadata._order},
+                    status:{$in:['delivered']}
+                },{
+                    status:'completed'
+                }).exec();
+
+                actions.log('syncPayments=' + JSON.stringify(_charge.metadata._order));
+
+
+            });
+        });
+        cb(null,{
+            ok:true,message:"Sync in progress, see server console for more details.",result:null
+        });
+    })
+}
 
 function create(data, cb) {
     actions.create(data, cb, saveKeys);
@@ -45,20 +135,20 @@ function save(data, cb) {
     });
 }
 
-function orderExists(data,cb) {
+function orderExists(data, cb) {
     actions.log('orderExists=' + JSON.stringify(data));
     //Si existe un order match user:email, address, start, end, price.
     actions.get({
-        address:data.address,
-        diagStart:data.diagStart,
-        diagEnd:data.diagEnd,
-        __populate:{'_client':'email'}
-    },(err,r)=>{
+        address: data.address,
+        diagStart: data.diagStart,
+        diagEnd: data.diagEnd,
+        __populate: { '_client': 'email' }
+    }, (err, r) => {
         if (err) return cb(err, null);
-        if(r && r._client.email == data.email){
-            cb("ORDER_EXISTS",null);
-        }else{
-            cb(null,null); //
+        if (r && r._client.email == data.email) {
+            cb("ORDER_EXISTS", null);
+        } else {
+            cb(null, null); //
         }
     });
 }
@@ -71,7 +161,7 @@ function saveWithEmail(data, cb) {
     ], (err, r) => {
         if (err) return cb(err, null);
         //
-        orderExists(data,(err, r) => {
+        orderExists(data, (err, r) => {
             if (err) return cb(err, null);
             UserAction.get({
                 email: data.email,
@@ -97,40 +187,14 @@ function saveWithEmail(data, cb) {
     });
 }
 
-function saveTest(data, cb) {
-    var data = {
-        "diags": {
-            "dpe": true,
-            "dta": false,
-            "crep": false,
-            "loiCarrez": true,
-            "ernt": true,
-            "termites": false,
-            "gaz": false,
-            "electricity": false,
-            "parasitaire": false
-        },
-        "sell": true,
-        "house": true,
-        "squareMeters": "-40m2",
-        "constructionPermissionDate": "avant le 01/01/1949",
-        "address": "15 Boulevard Voltaire, 75011 Paris, Francia",
-        "gasInstallation": "Oui, Moins de 15 ans",
-        "date": "2016-02-12T11:20:15.229Z",
-        "price": 70,
-        "time": "1:5",
-        "diagStart": 1455274214714,
-        "_diag": '56bdcb44f0aba6ab106a7007',
-        "diagEnd": 1455277814714,
-        "email": "arancibiajav@gmail.com"
-    };
-    return saveWithEmail(data, cb);
-}
+
 
 exports.actions = {
     //custom
     save: save,
     saveWithEmail: saveWithEmail,
+    pay: pay,
+    syncStripe:syncStripe,
     //heredado
     existsById: actions.existsById,
     existsByField: actions.existsByField,
@@ -148,6 +212,7 @@ exports.actions = {
 };
 
 exports.routes = (app) => {
+    
     app.post('/order/email', (req, res) => email.clientNewAccount(req.body, actions.result(res)));
     app.post('/order/existsById', (req, res) => actions.existsById(req.body, actions.result(res)));
     app.post('/order/existsByField', (req, res) => actions.existsByField(req.body, actions.result(res)));
@@ -156,11 +221,14 @@ exports.routes = (app) => {
     app.post('/order/find', (req, res) => actions.find(req.body, actions.result(res)));
     app.post('/order/login', (req, res) => login(req.body, actions.result(res)));
     app.post('/order/save', (req, res) => save(req.body, actions.result(res)));
-    app.post('/order/saveTest', (req, res) => saveTest(req.body, actions.result(res)));
+    app.post('/order/pay', (req, res) => pay(req.body, actions.result(res)));
+    //app.post('/order/syncPayments', (req, res) => syncPayments(req.body, actions.result(res)));
+    //app.post('/order/saveTest', (req, res) => saveTest(req.body, actions.result(res)));
     app.post('/order/saveWithEmail', (req, res) => saveWithEmail(req.body, actions.result(res)));
     app.post('/order/get', (req, res) => actions.get(req.body, actions.result(res)));
     app.post('/order/getAll', (req, res) => actions.getAll(req.body, actions.result(res)));
     app.post('/order/remove', (req, res) => actions.remove(req.body, actions.result(res)));
     app.post('/order/removeAll', (req, res) => actions.removeAll(req.body, actions.result(res)));
     actions.log('routes-order-ok');
+
 }

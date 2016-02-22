@@ -23,28 +23,49 @@ var saveKeys = ['_client', '_diag', 'diagStart', 'diagEnd', 'diags'
 function pay(data, cb) {
     actions.log('pay=' + JSON.stringify(data));
     actions.check(data, ['stripeToken'], (err, r) => {
-        if (err) return cb(err, null);
+        if (err) return cb(err, r);
         //
         UserAction.get({ _id: data._client._id }, (err, _user) => {
-            if (err) return cb(err, null);
+            if (err) return cb(err, r);
             if (_user.stripeCustomer) {
                 data.stripeCustomer = _user.stripeCustomer;
-                _pay();
+                _payIfNotPaidYet(data);
             } else {
                 _user.stripeToken = data.stripeToken;
                 payment.createCustomer(_user, (err, stripeCustomer) => {
-                    if (err) return cb(err, null);
+                    if (err) return cb(err, r);
                     _user.stripeCustomer = stripeCustomer.id;
                     data.stripeCustomer = stripeCustomer.id;
                     _user.save();
-                    _pay();
+                    //
+                    return _payIfNotPaidYet(data);
                 });
             }
         });
 
-        function _pay() {
+        function _payIfNotPaidYet(data) {
+            actions.log('_payIfNotPaidYet=' + JSON.stringify(data));
+            orderHasPayment(data, (err, has) => {
+                if (err) return cb(err, has);
+                if (!has) {
+                    return _pay(data);
+                } else {
+                    syncStripe();
+                    actions.log('_payIfNotPaidYet:rta=' + JSON.stringify({
+                        message: "Alredy paid"
+                    }));
+                    return cb(null, {
+                        message: "Alredy paid"
+                    });
+                }
+            })
+        }
+
+        function _pay(data) {
+            actions.log('_pay:rta=' + JSON.stringify(data));
+            //stripeCustomer
             payment.payOrder(data, (err, _charge) => {
-                if (err) return cb(err, null);
+                if (err) return cb(err, r);
                 //Change status to prepaid  (sync)
                 actions.get({ _id: data._id }, (err, _order) => {
                     if (_order.status == 'delivered') {
@@ -53,12 +74,14 @@ function pay(data, cb) {
                         _order.status = 'prepaid';
                     }
                     _order.save((err, r) => {
-                        if (err) return cb(err, null);
+                        if (err) return cb(err, r);
+                        notifyPaymentSuccess(_order);
                         _success();
                     });
                 });
                 //
                 function _success() {
+                    actions.log('_pay:rta=Success');
                     cb(null, {
                         ok: true,
                         message: "Pay successs",
@@ -71,42 +94,106 @@ function pay(data, cb) {
     });
 }
 
+function orderHasPayment(data, cb) {
+    actions.log('orderHasPayment=' + JSON.stringify(data));
+    if (!data.stripeCustomer) return cb("orderHasPayment: stripeCustomer required.", null);
+    //
+    var rta = false;
+    payment.listCustomerCharges({ stripeCustomer: data.stripeCustomer }, (err, _chargeR) => {
+        if (err) return cb(err, r);
+        var _charges = _chargeR.data;
+        _charges.forEach((_charge) => {
+            if (_charge.metadata._order == data._id) {
+                if (_charge.paid && !_charge.refunded) {
+                    rta = true;
+                }
+            }
+        })
+        return cb(null, rta);
+    });
+}
+
+function notifyPaymentSuccess(_order) {
+    actions.log('notifyPaymentSuccess:start=' + JSON.stringify(_order));
+    UserAction.get({ _id: _order._client._id || _order._client }, (err, _client) => {
+        email.orderPaymentSuccess(_client, _order, null);
+    });
+    UserAction.get({ _id: _order._diag._id || _order._diag }, (err, _diag) => {
+        email.orderPaymentSuccess(_diag, _order, null);
+    });
+    UserAction.getAll({ userType: 'admin' }, (err, _admins) => {
+        _admins.forEach((_admin) => {
+            email.orderPaymentSuccess(_admin, _order, null);
+        })
+    });
+}
+
 function syncStripe(data, cb) {
-    actions.log('syncPayments:start=' + JSON.stringify(data));
+    actions.log('syncStripe:start=' + JSON.stringify(data || {}));
     UserAction.getAll({
         __rules: {
             stripeCustomer: { $ne: null }
         }
     }, (err, _users) => {
-        if (err) return cb(err, null);
+        if (err) return cb(err, r);
         _users.forEach((_user) => {
-            payment.listCustomerCharges({ stripeCustomer: _user.stripeCustomer }, (err, _charge) => {
-                if (err) return cb(err, null);
-                _charge = _charge.data[0];
-                actions.log('syncPayments:charge=' + JSON.stringify(_charge.metadata));
+            payment.listCustomerCharges({ stripeCustomer: _user.stripeCustomer }, (err, _chargeR) => {
+                if (err) return cb(err, r);
+                var _charges = _chargeR.data;
 
-                Order.update({
-                    _id:{$eq:_charge.metadata._order},
-                    status:{$in:['ordered']}
-                },{
-                    status:'prepaid'
-                }).exec();
-                Order.update({
-                    _id:{$eq:_charge.metadata._order},
-                    status:{$in:['delivered']}
-                },{
-                    status:'completed'
-                }).exec();
+                _charges.forEach((_charge) => {
+                    if (_charge.paid && !_charge.refunded) {
+                        _syncOrderStatus(_charge, true);
+                    } else {
+                        _syncOrderStatus(_charge, false);
+                    }
+                });
 
-                actions.log('syncPayments=' + JSON.stringify(_charge.metadata._order));
+
 
 
             });
         });
-        cb(null,{
-            ok:true,message:"Sync in progress, see server console for more details.",result:null
-        });
+        if (cb) {
+            cb(null, {
+                ok: true,
+                message: "Sync in progress, see server console for more details.",
+                result: null
+            });
+        }
     })
+}
+
+function _syncOrderStatus(_charge, isPaid) {
+    actions.log('_syncOrderStatus:charge=' + JSON.stringify(_charge.metadata));
+    if (isPaid) {
+        Order.update({
+            _id: { $eq: _charge.metadata._order },
+            status: { $in: ['ordered'] }
+        }, {
+            status: 'prepaid'
+        }).exec();
+        Order.update({
+            _id: { $eq: _charge.metadata._order },
+            status: { $in: ['delivered'] }
+        }, {
+            status: 'completed'
+        }).exec();
+    } else {
+        Order.update({
+            _id: { $eq: _charge.metadata._order },
+            status: { $in: ['prepaid'] }
+        }, {
+            status: 'ordered'
+        }).exec();
+        Order.update({
+            _id: { $eq: _charge.metadata._order },
+            status: { $in: ['completed'] }
+        }, {
+            status: 'delivered'
+        }).exec();
+    }
+    actions.log('_syncOrderStatus=' + JSON.stringify(_charge.metadata._order));
 }
 
 function create(data, cb) {
@@ -116,14 +203,17 @@ function create(data, cb) {
 function save(data, cb) {
     actions.log('save=' + JSON.stringify(data));
     actions.createUpdate(data, (err, r) => {
-        if (err) return cb(err, null);
+        if (err) return cb(err, r);
         cb(err, r);
     }, {}, saveKeys).on('created', (err, _order) => {
 
+
         UserAction.get({ _id: _order._client._id || _order._client }, (err, _client) => {
+            _client._orders.push(_order.id);
             email.newOrder(_client, _order, null);
         });
         UserAction.get({ _id: _order._diag._id || _order._diag }, (err, _diag) => {
+            _diag._orders.push(_order.id);
             email.newOrder(_diag, _order, null);
         });
         UserAction.getAll({ userType: 'admin' }, (err, _admins) => {
@@ -144,11 +234,12 @@ function orderExists(data, cb) {
         diagEnd: data.diagEnd,
         __populate: { '_client': 'email' }
     }, (err, r) => {
-        if (err) return cb(err, null);
+        if (err) return cb(err, r);
         if (r && r._client.email == data.email) {
-            cb("ORDER_EXISTS", null);
+            actions.log('orderExists:rta=' + JSON.stringify(r));
+            return cb("ORDER_EXISTS", r); //returns the order as result
         } else {
-            cb(null, null); //
+            return cb(null, null); //
         }
     });
 }
@@ -159,15 +250,15 @@ function saveWithEmail(data, cb) {
 
         , 'diags', 'address', 'price' //, 'time'
     ], (err, r) => {
-        if (err) return cb(err, null);
+        if (err) return cb(err, r);
         //
         orderExists(data, (err, r) => {
-            if (err) return cb(err, null);
+            if (err) return cb(err, r);
             UserAction.get({
                 email: data.email,
                 type: 'client'
             }, (err, r) => {
-                if (err) return cb(err, null);
+                if (err) return cb(err, r);
                 actions.log('saveWithEmail=user:get:return' + JSON.stringify(r));
                 if (r) {
                     data._client = r._id;
@@ -176,7 +267,7 @@ function saveWithEmail(data, cb) {
                     UserAction.createClientIfNew({
                         email: data.email
                     }, (err, r) => {
-                        if (err) return cb(err, null);
+                        if (err) return cb(err, r);
                         data._client = r._id;
                         return save(data, cb);
                     });
@@ -194,7 +285,7 @@ exports.actions = {
     save: save,
     saveWithEmail: saveWithEmail,
     pay: pay,
-    syncStripe:syncStripe,
+    syncStripe: syncStripe,
     //heredado
     existsById: actions.existsById,
     existsByField: actions.existsByField,
@@ -212,7 +303,7 @@ exports.actions = {
 };
 
 exports.routes = (app) => {
-    
+
     app.post('/order/email', (req, res) => email.clientNewAccount(req.body, actions.result(res)));
     app.post('/order/existsById', (req, res) => actions.existsById(req.body, actions.result(res)));
     app.post('/order/existsByField', (req, res) => actions.existsByField(req.body, actions.result(res)));

@@ -33,6 +33,10 @@ process.on('SIGINT', function() {
   }); 
 }); 
 
+
+mongoose.model('Payment',{});
+mongoose.model('Stats',{});
+
 mongoose.model('TimeRange',{
     _user:{ type: Schema.Types.ObjectId, ref: 'User' ,required:true},
     description: {type:String,required:false},
@@ -52,7 +56,9 @@ mongoose.model('User', {
     passwordSended:{type:Boolean,default:false},
     address:String, 
     tel: String,
-    _orders:[{ type: Schema.Types.ObjectId, ref: 'Order' }],
+
+    //DIAG / CLIENT
+    _orders:[{ type: Schema.Types.ObjectId, ref: 'Order' }], 
 
     city:String,
     country:String,
@@ -70,7 +76,7 @@ mongoose.model('User', {
     comission:Number,
 
     //CLIENT
-    clientType: {type:String}, //(Landlord / Agency / Foncière)
+    clientType: {type:String}, //(landlord / agency / Foncière)
     siret: String,
     discount: {type:Number,default:0},
     
@@ -86,6 +92,7 @@ mongoose.model('Order', {
     address:{type:String,required:true}, 
     info: Array,
     obs: String,
+    notifications:Array,
     diagStart: {type:Date,required:true},
     diagEnd: {type:Date,required:true},
     status: {type:String,default:'ordered'},

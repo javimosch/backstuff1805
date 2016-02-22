@@ -20,6 +20,74 @@ var actions = {
     }
 };
 
+function associatedOrder(data, cb) {
+    //data.source
+    if (data.source.indexOf('ch') !== -1) {
+        _charge(data.source);
+    } else {
+        stripe.refunds.retrieve(
+            data.source,
+            function(err, refund) {
+                _charge(refund.charge);
+            }
+        );
+    }
+
+    function _charge(id) {
+        stripe.charges.retrieve(
+            id,
+            function(err, charge) {
+                var _id = charge.metadata._order;
+                var _orderDescription = charge.metadata._orderDescription;
+                var _orderURL = charge.metadata._orderURL;
+                //Order.get({ _id: _id }, (err, _order) => {
+                cb(null, {
+                    _order: {
+                        description: _orderDescription,
+                        _id: _id
+                    }
+                });
+                //..});
+            }
+        );
+    }
+}
+
+
+function balanceTransactions(data, cb) {
+
+    stripe.balance.listTransactions({}, function(err, transactions) {
+        cb(err, transactions);
+    });
+}
+
+function balance(data, cb) {
+    stripe.balance.retrieve(function(err, balance) {
+        cb(err, balance);
+    });
+}
+
+function listCharges(data, cb) {
+    actions.log('listCharges=' + JSON.stringify(data));
+    //if (!data.stripeCustomer) return cb("listCustomerCharges: stripeCustomer required.", null);
+    stripe.charges.list((err, charges) => {
+        if (err) return cb(err, null);
+        cb(null, charges);
+    });
+}
+
+function listUncaptured(data, cb) {
+    actions.log('listUncaptured=' + JSON.stringify(data));
+    var rta = [];
+    listCharges(data, (err, chargesR) => {
+        chargesR.data.forEach((_charge) => {
+            if (!_charge.captured) {
+                rta.push(_charge);
+            }
+        });
+        cb(null, rta);
+    });
+}
 
 function listCustomerCharges(data, cb) {
     actions.log('listCustomerCharges=' + JSON.stringify(data));
@@ -71,13 +139,35 @@ function payOrder(_order, cb) {
             cb(err, null);
         } else {
             actions.log('payOrder:rta=' + JSON.stringify(charge));
+
+            captureOrderCharge(charge); //async
+
             cb(null, charge)
         }
+    });
+}
+
+function captureOrderCharge(charge, cb) {
+    actions.log('captureOrderCharge:start=' + JSON.stringify(charge));
+    stripe.charges.capture({
+        charge: charge.id,
+        statement_descriptor: (process.env.companyName || 'Diags S.A') + ' - Custom inspection.'
+    }, function(err, charge) {
+        // asynchronously called
+        if (err) {
+            actions.log('captureOrderCharge:error=' + JSON.stringify(err));
+        }
+        actions.log('captureOrderCharge:rta=' + JSON.stringify(charge));
     });
 }
 
 exports.actions = {
     payOrder: payOrder,
     createCustomer: createCustomer,
-    listCustomerCharges:listCustomerCharges
+    listCustomerCharges: listCustomerCharges,
+    listCharges: listCharges,
+    listUncaptured: listUncaptured,
+    balance: balance,
+    balanceTransactions: balanceTransactions,
+    associatedOrder: associatedOrder
 };

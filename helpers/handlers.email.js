@@ -88,6 +88,25 @@ function newOrder(_user, _order, cb) {
     });
 }
 
+function orderPaymentSuccess(_user, _order, cb) {
+    actions.log('orderPaymentSuccess=' + JSON.stringify({
+        email: _user.email,
+        _order: _order._id,
+        price: _order.price
+    }));
+    send({
+        to: _user.email,
+        subject: "Order Payment Notification",
+        templateName: 'order.payment.success.' + _user.userType,
+        templateReplace: {
+            '$NAME': _user.firstName || _user.email,
+            '$ORDER_URL': adminUrl('/orders/edit/' + _order._id),
+            '$ORDER_DESCR': _order.address + ' (' + time(_order.diagStart) + ' - ' + time(_order.diagEnd) + ')',
+        },
+        cb: cb
+    });
+}
+
 
 function diagNewAccount(_user, cb) {
     actions.log('diagNewAccount=' + JSON.stringify(_user));
@@ -148,10 +167,27 @@ function handleNewAccount(_user, err, r) {
     }
 }
 
+function passwordReset(_user, cb) {
+    actions.log('handlePasswordReset=' + JSON.stringify(_user));
+    send({
+        to: _user.email,
+        subject: "Password reset",
+        templateName: 'user.new.password',
+        templateReplace: {
+            '$NAME': _user.firstName || _user.email,
+            '$PASS': _user.password || '[Contact support for the password]',
+            '$URL': process.env.adminURL || 'http://localhost:3000/admin?email=' + _user.email + '&k=' + btoa(_user.password)
+        },
+        cb: cb
+    });
+}
+
 exports.actions = {
     clientNewAccount: clientNewAccount,
     diagNewAccount: diagNewAccount,
     adminNewAccount: adminNewAccount,
     handleNewAccount: handleNewAccount,
-    newOrder: newOrder
+    newOrder: newOrder,
+    passwordReset: passwordReset,
+    orderPaymentSuccess: orderPaymentSuccess
 };

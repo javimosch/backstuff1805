@@ -4,7 +4,10 @@ var promise = require('./utils').promise;
 
 exports.create = function(modelName) {
     var Model = mongoose.model(modelName);
-    //
+
+
+
+
     function log(msg) {
         console.log(modelName.toUpperCase() + ': ' + msg);
     }
@@ -58,10 +61,10 @@ exports.create = function(modelName) {
                         }
                     })
                 } else {
-                    _create(data, (err,r)=>{
+                    _create(data, (err, r) => {
                         if (err) return cb(err, null);
-                        emit('created', err, r);    
-                        cb(err,r);
+                        emit('created', err, r);
+                        cb(err, r);
                     }, requiredKeys);
                 }
             });
@@ -83,7 +86,7 @@ exports.create = function(modelName) {
     function getAll(data, cb) {
         log('getAll=' + JSON.stringify(data));
         var query = Model.find(toRules(data))
-        if(data.__select){
+        if (data.__select) {
             query = query.select(data.__select);
         }
         if (data.__populate) {
@@ -120,7 +123,7 @@ exports.create = function(modelName) {
         //check(data, ['_id'], (err, r) => {
         //  if (err) return cb(err, r);
         var query = Model.findOne(toRules(data))
-        if(data.__select){
+        if (data.__select) {
             query = query.select(data.__select);
         }
         if (data.__populate) {
@@ -187,8 +190,8 @@ exports.create = function(modelName) {
                 };
             }
         }
-        if(data.__rules){
-            rules = Object.assign(rules,data.__rules);
+        if (data.__rules) {
+            rules = Object.assign(rules, data.__rules);
         }
         log('toRules:' + JSON.stringify(rules));
         return rules;
@@ -209,6 +212,7 @@ exports.create = function(modelName) {
         });
     }
     return {
+        model:Model,
         existsById: existsById,
         existsByField: existsByField,
         createUpdate: createUpdate,

@@ -1,6 +1,9 @@
 var mongoose = require('./db').mongoose;
 var user = require('./handlers.user');
 var order = require('./handlers.order');
+var payment = require('./handlers.payment');
+var stats = require('./handle.stats');
+var _ = require('lodash');
 //var path = require("path");
 //var request = require('request');
 //var configureTemplateRoutes = require('../templates/templates').configure;
@@ -8,33 +11,33 @@ var createController = require('./handler.actions').create;
 
 exports.configure = function(app) {
 
-//    configureTemplateRoutes(app);
+    //    configureTemplateRoutes(app);
 
-/*
-    app.get('/html/email', (req, res) => {
-        var html = getFile('../templates/email.html');
-        res.json({html:html});
-    });
-*/
+    /*
+        app.get('/html/email', (req, res) => {
+            var html = getFile('../templates/email.html');
+            res.json({html:html});
+        });
+    */
 
     app.get('/email/test', (req, res) => {
         var html = getFile('../templates/email.html');
-        html = S(html).replaceAll('$PASSWORD',123)
-               .replaceAll('$URL',process.env.adminURL || 'http://localhost:3000/admin')
-               .s;
-        res.json({r:html});
+        html = S(html).replaceAll('$PASSWORD', 123)
+            .replaceAll('$URL', process.env.adminURL || 'http://localhost:3000/admin')
+            .s;
+        res.json({ r: html });
         return;
         var data = {
-            html : html,
-            from:'admin@diags.com',
-            to:'arancibiajav@gmail.com',
-            subject:'Your order is created #2'
+            html: html,
+            from: 'admin@diags.com',
+            to: 'arancibiajav@gmail.com',
+            subject: 'Your order is created #2'
         };
 
-        sendEmail(data,(r)=>{
-            res.json(r);    
+        sendEmail(data, (r) => {
+            res.json(r);
         })
-        
+
     });
 
 
@@ -44,32 +47,45 @@ exports.configure = function(app) {
     order.routes(app);
 
 
-    app.get('/ctrl/:controller/:action',function(req,res){
+    app.get('/ctrl/:controller/:action', function(req, res) {
         var controller = req.params.controller;
         var action = req.params.action;
         var data = req.params;
         var actions = createController(controller);
-        if(controller == 'User'){
-            Object.assign(actions,user.actions);
+        if (controller == 'User') {
+            Object.assign(actions, user.actions);
         }
-        if(controller == 'Order'){
-            Object.assign(actions,order.actions);
+        if (controller == 'Order') {
+            Object.assign(actions, order.actions);
         }
-        actions[action](data,actions.result(res));
+        actions[action](data, actions.result(res));
     });
 
-    app.post('/ctrl/:controller/:action',function(req,res){
+    app.post('/ctrl/:controller/:action', function(req, res) {
         var controller = req.params.controller;
         var action = req.params.action;
         var data = req.body;
-        var actions = createController(controller);
-        if(controller == 'User'){
-            Object.assign(actions,user.actions);
+
+        var actions = {};
+
+        //if (_.includes(['User', 'Order'], controller)) {
+            actions = createController(controller);
+        //}
+
+        if (controller == 'User') {
+            Object.assign(actions, user.actions);
         }
-        if(controller == 'Order'){
-            Object.assign(actions,order.actions);
+        if (controller == 'Order') {
+            Object.assign(actions, order.actions);
         }
-        actions[action](data,actions.result(res));
+        if (controller == 'Payment') {
+            Object.assign(actions, payment.actions);
+        }
+        if (controller == 'Stats') {
+            Object.assign(actions, stats.actions);
+        }
+
+        actions[action](data, actions.result(res));
     });
 
     app.post('/custom', function(req, res) {

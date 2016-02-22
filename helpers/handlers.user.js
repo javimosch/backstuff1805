@@ -66,7 +66,7 @@ function createDiag(data, cb) {
 function createClient(data, cb) {
     actions.log('createClient=' + JSON.stringify(data));
     data.userType = 'client';
-    data.clientType = data.clientType || 'LandLord';
+    data.clientType = data.clientType || 'landlord';
     createUser(data, (err, _user) => {
         if (err) return cb(err, null);
         sendAccountsDetails(_user);
@@ -122,12 +122,33 @@ function login(data, cb) {
 }
 
 
+function passwordReset(data, cb) {
+    actions.check(data, ['email'], (err, r) => {
+        if (err) return cb(err, r);
+        actions.get({
+            email: data.email
+        }, (err, _user) => {
+            if (err) return cb(err, _user);
+            if (_user) {
+
+                _user.password = generatePassword(8);
+                _user.save();
+
+                email.passwordReset(_user, (err, r) => {
+                    return cb(err, r);
+                });
+            }
+        })
+    });
+}
+
 exports.actions = {
     //custom
     save: save,
     createClientIfNew: createClientIfNew,
     login: login,
     createDiag: createDiag,
+    passwordReset: passwordReset,
     //heredado
     existsById: actions.existsById,
     existsByField: actions.existsByField,

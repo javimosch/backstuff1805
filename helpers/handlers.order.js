@@ -25,8 +25,9 @@ function pay(data, cb) {
     actions.check(data, ['stripeToken'], (err, r) => {
         if (err) return cb(err, r);
         //
-        UserAction.get({ _id: data._client._id }, (err, _user) => {
-            if (err) return cb(err, r);
+        var _userID = data._client && data._client._id || data._client;
+        UserAction.get({ _id: _userID }, (err, _user) => {
+            if (err) return cb(err, _user);
             if (_user.stripeCustomer) {
                 data.stripeCustomer = _user.stripeCustomer;
                 _payIfNotPaidYet(data);
@@ -202,6 +203,18 @@ function create(data, cb) {
 
 function save(data, cb) {
     actions.log('save=' + JSON.stringify(data));
+
+    //setInfo
+    data.info = data.info || {};
+    data.info=Object.assign(data.info||{},{
+        sell:data.info.sell||data.sell||undefined,
+        house:data.info.house||data.house||undefined,
+        squareMeters:data.info.squareMeters||data.squareMeters||undefined,
+        apartamentType:data.info.apartamentType||data.apartamentType||undefined,
+        constructionPermissionDate:data.info.constructionPermissionDate||data.constructionPermissionDate||undefined,
+        gasInstallation:data.info.gasInstallation||data.gasInstallation||undefined,
+    });
+
     actions.createUpdate(data, (err, r) => {
         if (err) return cb(err, r);
         cb(err, r);
@@ -228,19 +241,32 @@ function save(data, cb) {
 function orderExists(data, cb) {
     actions.log('orderExists=' + JSON.stringify(data));
     //Si existe un order match user:email, address, start, end, price.
-    actions.get({
+    actions.getAll({
+        __populate: { '_client': 'email' },
+        //'_client.email': data.email,
         address: data.address,
-        diagStart: data.diagStart,
-        diagEnd: data.diagEnd,
-        __populate: { '_client': 'email' }
-    }, (err, r) => {
-        if (err) return cb(err, r);
-        if (r && r._client.email == data.email) {
-            actions.log('orderExists:rta=' + JSON.stringify(r));
-            return cb("ORDER_EXISTS", r); //returns the order as result
-        } else {
-            return cb(null, null); //
-        }
+        //diagStart: data.diagStart,
+        //diagEnd: data.diagEnd,
+    }, (err, list) => {
+        actions.log('orderExists:getAll:err:?=' + JSON.stringify(err));
+        if (err) return cb(err, list);
+        var rta = null;
+        list.forEach((r) => {
+            actions.log('orderExists:getAll:reading=' + JSON.stringify(r._client.email));
+            if (r && r._client.email == data.email) {
+                //check dates sameday same hour
+                var sameOrder = true
+                    &&moment(r.diagStart).isSame(data.diagStart,'day')
+                    &&moment(r.diagEnd).isSame(data.diagEnd,'day')
+                    &&r.price == data.price;
+                if(sameOrder){
+                    rta = r;
+                    return false;
+                }
+            } 
+        });
+        actions.log('orderExists:rta=' + JSON.stringify(rta));
+        return cb(rta?"ORDER_EXISTS":null,rta); //returns the order as result
     });
 }
 

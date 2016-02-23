@@ -75,12 +75,12 @@ exports.configure = function(app) {
         var action = req.params.action;
         var data = req.body;
 
-        if(req.get('content-type').indexOf('multipart/form-data') !== -1){
-            console.log('ctrl.post:type (FORM)'+req.get('content-type'));
-            data = Object.assign(data||{},req.form||{});
-        }else{
-            console.log('ctrl.post:type '+req.get('content-type'));
-        }
+        //if(req.get('content-type').indexOf('multipart/form-data') !== -1){
+          //  console.log('ctrl.post:type (FORM)'+req.get('content-type'));
+            ///data = Object.assign(data||{},req.form||{});
+        //}else{
+          //  console.log('ctrl.post:type '+req.get('content-type'));
+        //}
 
         var actions = {};
 

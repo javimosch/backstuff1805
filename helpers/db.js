@@ -94,7 +94,7 @@ mongoose.model('Order', {
     _client:{ type: Schema.Types.ObjectId, ref: 'User' },
     diags: {type: {}, required:true},
     address:{type:String,required:true}, 
-    info: Array,
+    info: {type:{},required:false},
     obs: String,
     notifications:Array,
     diagStart: {type:Date,required:true},

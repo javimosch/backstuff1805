@@ -1,5 +1,6 @@
 require('es6-promise').polyfill();
 var mongoose = require('mongoose');
+var configureGridFS = require('./db.gridfs').configure;
 
 var Schema = mongoose.Schema;
 
@@ -33,9 +34,12 @@ process.on('SIGINT', function() {
   }); 
 }); 
 
+configureGridFS(mongoose);
+
 
 mongoose.model('Payment',{});
 mongoose.model('Stats',{});
+mongoose.model('File',{});
 
 mongoose.model('TimeRange',{
     _user:{ type: Schema.Types.ObjectId, ref: 'User' ,required:true},

@@ -1,1 +1,1 @@
-curl http://localhost:5000/$1/$2
+curl http://localhost:5000/$1/$2/$3

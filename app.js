@@ -1,13 +1,55 @@
 var express = require('express');
 var cors = require('express-cors')
 var bodyParser = require('body-parser')
-
+var bb = require('express-busboy');
+var busboy = require('connect-busboy');
+var path    = require("path");
+var inspect = require('util').inspect;
 
 require('./helpers/db');
 var configureRoutes = require('./helpers/handle.routes').configure;
 
 var app = express();
-app.use(bodyParser());
+
+app.use(busboy());
+app.use(function(req, res,next) {
+   
+  if (req.busboy) {
+    //req.busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
+        //console.log('file',fieldname,inspect(file),filename,encoding,mimetype);
+    //});
+    req.busboy.on('field', function(key, value, keyTruncated, valueTruncated) {
+        console.log('field',key,value,keyTruncated,valueTruncated);
+    });
+    //req.pipe(req.busboy).on('close',(a,b,c)=>{console.log('close',a,b,c)});
+  }
+  next();
+});
+
+/*
+app.use(function(req,res,next){
+    var ct = req.get('content-type');
+    if(ct && ct.indexOf('multipart/form-data') !== -1)return next();
+    return bodyParser.json()(req,res,next);
+});
+
+app.use(function(req,res,next){
+    var ct = req.get('content-type');
+    if(ct && ct.indexOf('multipart/form-data') !== -1)return next();
+    return bodyParser.urlencoded({ extended: true })(req,res,next);
+});
+*/
+
+app.use(bodyParser.urlencoded({ extended: true }))
+/*
+bb.extend(app,{
+    upload:true,
+    path: path.join(__dirname+'/uploads')
+});*/
+app.use(bodyParser.json());
+
+
+
 
 var LOCAL = process.env.LOCAL && process.env.LOCAL.toString() == '1' || false;
 var allowedOrigins = [];

@@ -3,6 +3,10 @@ var user = require('./handlers.user');
 var order = require('./handlers.order');
 var payment = require('./handlers.payment');
 var stats = require('./handle.stats');
+var fileActions = require('./db.gridfs').actions;
+
+
+
 var _ = require('lodash');
 //var path = require("path");
 //var request = require('request');
@@ -58,7 +62,12 @@ exports.configure = function(app) {
         if (controller == 'Order') {
             Object.assign(actions, order.actions);
         }
-        actions[action](data, actions.result(res));
+        if (controller == 'File') {
+            Object.assign(actions, fileActions);
+        }
+
+        data.__req = req;
+        actions[action](data, actions.result(res, data));
     });
 
     app.post('/ctrl/:controller/:action', function(req, res) {
@@ -66,10 +75,17 @@ exports.configure = function(app) {
         var action = req.params.action;
         var data = req.body;
 
+        if(req.get('content-type').indexOf('multipart/form-data') !== -1){
+            console.log('ctrl.post:type (FORM)'+req.get('content-type'));
+            data = Object.assign(data||{},req.form||{});
+        }else{
+            console.log('ctrl.post:type '+req.get('content-type'));
+        }
+
         var actions = {};
 
         //if (_.includes(['User', 'Order'], controller)) {
-            actions = createController(controller);
+        actions = createController(controller);
         //}
 
         if (controller == 'User') {
@@ -85,7 +101,29 @@ exports.configure = function(app) {
             Object.assign(actions, stats.actions);
         }
 
-        actions[action](data, actions.result(res));
+        if (controller == 'File') {
+            Object.assign(actions, fileActions);
+        }
+
+        actions[action](data, actions.result(res),req,res);
+    });
+
+    app.post('/File/save/',(req,res)=>{
+        var actions = Object.assign(createController('File'),fileActions);
+        actions.save({
+            //name:req.params.name,
+            //order:req.params.order
+        },actions.result(res),req,res);
+    });
+
+    app.get('/File/get/:_id', (req, res) => {
+        fileActions.get({ _id: req.params._id }, (err, data) => {
+            res.setHeader('Content-disposition', 'attachment; filename=' + data.filename);
+            //res.setHeader('Content-Type', data.contentType );
+            res.setHeader('Content-Type', 'application/pdf');
+            
+            data.stream.pipe(res);
+        });
     });
 
     app.post('/custom', function(req, res) {

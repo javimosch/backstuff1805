@@ -105,16 +105,29 @@ exports.create = function(modelName) {
         });
     }
 
-    function result(res) {
+    function result(res, options) {
         return function(err, r) {
-            var result = {
+            var rta = {
                 ok: !err,
                 message: (err) ? 'Error' : 'Success',
                 err: err || null,
-                result: r || null
+                result: (r !== null) ? r : ((r === false) ? false : null)
             };
-            log('result=' + JSON.stringify(result));
-            res.json(result);
+
+            //when result contains something like {ok,message,result}
+            if (rta.result && rta.result.result) {
+                if (rta.result.message) {
+                    rta.message = rta.result.message;
+                    rta.result = rta.result.result;
+                }
+            }
+
+            log('result=' + JSON.stringify(rta));
+            if (options && options.__res) {
+                options.__res(res, rta);
+            } else {
+                res.json(rta);
+            }
         };
     }
 
@@ -211,12 +224,29 @@ exports.create = function(modelName) {
             return Model.create(data, cb);
         });
     }
+
+    function update(data, cb) {
+        log('update=' + JSON.stringify(data));
+        check(data, ['_id'], (err, r) => {
+            if (err) return cb(err, null);
+            var _id = data._id;
+            delete data._id;
+            Model.update({
+                _id: _id
+            }, data, (err, r) => {
+                if (err) return cb(err, null);
+                return cb(null, r);
+            });
+        });
+    }
+
     return {
-        model:Model,
+        model: Model,
         existsById: existsById,
         existsByField: existsByField,
         createUpdate: createUpdate,
         getAll: getAll,
+        update: update,
         remove: remove,
         result: result,
         get: get,

@@ -105,7 +105,11 @@ exports.configure = function(app) {
             Object.assign(actions, fileActions);
         }
 
-        actions[action](data, actions.result(res),req,res);
+        if(actions[action]){
+            actions[action](data, actions.result(res),req,res);
+        }else{
+            actions.model[action](actions.toRules(data), actions.result(res),req,res);
+        }
     });
 
     app.post('/File/save/',(req,res)=>{

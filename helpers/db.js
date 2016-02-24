@@ -92,6 +92,7 @@ mongoose.model('User', {
     city:String,
     diplomes:[],
     comission:Number,
+    disabled:{type:Boolean,default:false},
 
 
     //CLIENT

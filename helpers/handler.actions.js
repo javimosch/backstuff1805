@@ -8,8 +8,16 @@ exports.create = function(modelName) {
 
 
 
-    function log(msg) {
-        console.log(modelName.toUpperCase() + ': ' + msg);
+    function log(x) {
+        console.log('');//enter
+        //
+        var args = arguments;
+        var msg = '';
+        Object.keys(args).forEach((arg,i)=>{
+            if(msg==='')    msg+=args[arg].toString().toUpperCase();
+            else            msg+= ", "+args[arg].toString();
+        });
+        console.log(modelName.toUpperCase() + ': '+msg);
     }
 
     function existsById(_id, cb) {
@@ -34,42 +42,73 @@ exports.create = function(modelName) {
     function createUpdate(data, cb, matchData, requiredKeys) {
         return promise((then, error, emit) => {
             //
-            log('save=' + JSON.stringify(data));
+            log('createUpdate=' + JSON.stringify(data));
             check(data, requiredKeys || [], (err, r) => {
-                if (err) return cb(err, null);
+                if (err) return rta(err, null);
                 if (data._id) {
                     data.updatedAt = new Date();
                     var _id = data._id;
                     delete data._id;
-                    return Model.findByIdAndUpdate(_id, data).exec(cb);
+                    return Model.findByIdAndUpdate(_id, data).exec((err, r) => {
+                        if (err) return rta(err, null);
+                        if (!r) return rta(modelName + '= ' + _id + ' do not belong to any item.', null);
+                        return rta(err, r);
+                    });
                 }
                 matchData = matchData || {};
+
+                if (matchData.length) {
+                    //an array of string that represents the fields to match
+                    if (matchData.filter(k => data[k] === undefined).length == 0) {
+                        var _matchData = {}
+                        matchData.map(key => _matchData[key] = data[key]);
+                        matchData = _matchData;
+                    } else {
+                        matchData = {};
+                    }
+                }
+
+                log('createUpdate:matchData=' + JSON.stringify(matchData));
+
                 if (Object.keys(matchData).length > 0) {
                     return Model.findOne(toRules(matchData)).exec((err, r) => {
-                        if (err) return cb(err, null);
+                        if (err) return rta(err, null);
                         if (r) {
+                            log('createUpdate:match:found:updating');
                             for (var x in data) {
                                 r[x] = data[x];
                             }
-                            return r.save(cb);
+                            return r.save((err, r) => {
+                                emit('updated', err, r);
+                                return rta(err, r);
+                            });
                         } else {
+                            log('createUpdate:match:not-found:creating');
                             _create(data, (err, r) => {
-                                if (err) return cb(err, null);
+                                if (err) return rta(err, null);
                                 emit('created', err, r);
-                                cb(err, r);
+                                return rta(err, r);
                             }, requiredKeys);
                         }
                     })
                 } else {
+                    log('createUpdate:creating');
                     _create(data, (err, r) => {
-                        if (err) return cb(err, null);
+                        if (err) return rta(err, null);
                         emit('created', err, r);
-                        cb(err, r);
+                        return rta(err, r);
                     }, requiredKeys);
                 }
             });
             //
+            function rta(err, r) {
+                if (err) error(err, r);
+                else then(err, r);
+                log('createUpdate:rta' + JSON.stringify(r));
+                return cb(err, r);
+            }
         });
+
     }
 
     function populate(query, p) {
@@ -122,7 +161,7 @@ exports.create = function(modelName) {
                 }
             }
 
-            log('result=' + JSON.stringify(rta));
+            log('result=',JSON.stringify(rta));
             if (options && options.__res) {
                 options.__res(res, rta);
             } else {

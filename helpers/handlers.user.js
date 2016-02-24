@@ -5,7 +5,158 @@ var promise = require('./utils').promise;
 var validate = require('./validator').validate;
 var handleMissingKeys = require('./validator').handleMissingKeys;
 var actions = require('./handler.actions').create('User');
+var Order = require('./handler.actions').create('Order');
+var Balance = require('./handler.actions').create('Balance');
+var BalanceItem = require('./handler.actions').create('BalanceItem');
 var email = require('./handlers.email').actions;
+var _ = require('lodash');
+var moment = require('moment');
+
+function balance(data, cb) {
+    data.period = data.period || 'year';
+    actions.log('balance=' + JSON.stringify(data));
+    data._calculate = data._calculate && data._calculate.toString() == 'true' || false;
+    if (!data._id) return cb("_id required");
+    if (data._calculate) {
+        _calculate(null, null, true);
+    } else {
+        _retrieve();
+    }
+
+    //
+    function _calculate(err, _user, firstTime) {
+        if (!_user && firstTime == true) return actions.model.findById(data._id, _calculate);
+        if (!_user) return cb("balance:calculate=User not found:" + data._id);
+        //
+        if (_user.userType == 'admin') {
+            return cb('Admin balance unsupported');
+        }
+        //
+        actions.log('balance:_calculate');
+        var balanceKeys = ['_user', 'amount'];
+        var balanceMatch = ['_user'];
+        var balanceItemKeys = ['_user', '_order', 'pending', 'amount', 'description'];
+        var balanceItemMatch = ['_user', '_order'];
+        //
+        Balance.createUpdate({ _user: _user._id, amount: 0 }, (err, bal) => {
+            if (err) return cb(err);
+            actions.log('balance:_calculate:creteUpdate:rta', JSON.stringify(bal));
+            BalanceItem.removeAll({
+                _user: _user._id
+            }, (err, rr) => {
+                if (err) return cb(err);
+                bal.items = [];
+                _calculateBalance(null, bal);
+            });
+        }, balanceMatch, balanceKeys);
+        //
+        function _calculateBalance(err, _balance) {
+            actions.log('balance:_calculateBalance', JSON.stringify(_balance));
+            if (err) return cb(err, _balance);
+            if (!_balance) return cb('balance:create:error');
+            //
+            //remove prev balance items
+
+            //
+            Order.getAll(_orderRules(), (err, _orders) => {
+                actions.log('balance:_calculateBalance:orders=', _orders.length);
+                if (err) return cb(err, _orders);
+
+                if (!_orders || _orders.length == 0) {
+                    _balance.amount = 0;
+                    _balance.save((err, r) => {
+                        _retrieve();
+                    });
+                } else {
+                    balanceAmount = 0;
+                    var _stackSaving = [];
+                    var exit = false;
+                    _orders.forEach(_order => {
+
+                        //validate period
+                        var now = moment();
+                        if (!now.isSame(moment(_order.diagStart), data.period)) {
+                            actions.log('balance:_calculateBalance:excluding order=' + _order._id);
+                            return; // exclude  
+                        }
+
+                        _stackSaving.push(_order._id);
+                        var d = {};
+                        d.pending = !_.includes(['prepaid', 'completed'], _order.status);
+                        d.description = _order.address + ' (' + moment(_order.diagStart).format('DD-MM-YY') + ', ' + moment(_order.diagStart).format('HH:mm') + ' - ' + moment(_order.diagEnd).format('HH:mm') + ')';
+                        d.amount = _order.price;
+                        //diag
+                        //-_user.diagWebsiteComission (admin decide it) (-)
+                        //-_order.fastDiagComm (+)
+                        if (_user.userType == 'diag') {
+                            var diagWebsiteComission = ((_order.price * _user.comission) / 100) * -1;
+                            
+                            d.amount = _order.price + diagWebsiteComission;
+
+                            var fastDiagComm = (d.amount * _order.fastDiagComm) / 100;
+                            d.amount+= fastDiagComm;
+                        }
+                        //admin
+                        //-diag price (-)
+                        //-client disccount (-)
+                        //-stripe % (-)
+                        if (_user.userType == 'admin') {
+                            cb('Admin balance unsupported');
+                            exit = true;
+                            return false;
+                        }
+                        //client
+                        //just the order price
+                        d._order = _order._id;
+                        d._user = _user._id;
+                        //
+                        balanceAmount += d.amount;
+                        BalanceItem.createUpdate(d, (err, _balanceItem) => {
+                            _stackSaving = _stackSaving.slice(1);
+                            //_balance.save(); //async
+                            actions.log('balance:items:remain-for-saving', _stackSaving.length);
+                        }, balanceItemMatch, balanceItemKeys).on('created', (err, _balanceItem) => {
+                            //_balance.items = _balance.items || [];
+                            _balance.items.push(_balanceItem);
+                            actions.log('balance:item:created **');
+                        }).on('updated', (err, _balanceItem) => {
+                            actions.log('balance:item:updated **');
+                        });
+
+                    });
+                    if (exit) return; //headers alredy sent;
+                    _balance.amount = balanceAmount;
+                    var waitChilds = setInterval(() => {
+                        if (_stackSaving.length === 0) {
+                            clearInterval(waitChilds);
+                            _balance.save((err, r) => {
+                                _retrieve();
+                            });
+                        }
+                    }, 50);
+                }
+            });
+        }
+
+        function _orderRules() {
+            if (_user.userType == 'diag') return { _diag: _user._id };
+            if (_user.userType == 'client') return { _client: _user._id };
+            if (_user.userType == 'admin') return {};
+        }
+    }
+
+    function _retrieve() {
+        actions.log('balance:retrieve');
+        Balance.get({
+            _user: data._id,
+            __populate: {
+                'items': '_user _order pending amount description'
+            }
+        }, (err, _balance) => {
+            return cb(err, _balance);
+        });
+    }
+}
 
 function save(data, cb) {
     actions.createUpdate(data, cb, {
@@ -144,6 +295,7 @@ function passwordReset(data, cb) {
 
 exports.actions = {
     //custom
+    balance: balance,
     save: save,
     createClientIfNew: createClientIfNew,
     login: login,

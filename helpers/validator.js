@@ -3,6 +3,10 @@ var promise = require('./utils').promise;
 function validate(data,keys){
     return promise(function(resolve,error){
         var missingKeys = [];
+        keys = keys ||[];
+        if(!keys.forEach){
+            keys = [];
+        }
         keys.forEach(function(v,k){
             if(typeof data[v] === 'undefined' || data[v] === null){
                 missingKeys.push(v);

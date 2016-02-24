@@ -41,6 +41,19 @@ mongoose.model('Payment',{});
 mongoose.model('Stats',{});
 mongoose.model('File',{});
 
+mongoose.model('Balance',{
+    _user:{ type: Schema.Types.ObjectId, ref: 'User' ,required:true},
+    amount:{type:String,required:true},
+    items:[{ type: Schema.Types.ObjectId, ref: 'BalanceItem' }], 
+});
+mongoose.model('BalanceItem',{
+    _user:{ type: Schema.Types.ObjectId, ref: 'User' ,required:true},
+    _order:{ type: Schema.Types.ObjectId, ref: 'Order' ,required:true},
+    description:{type:String,required:true},
+    pending:{type:Boolean,required:true},
+    amount:{type:String,required:true}
+});
+
 mongoose.model('TimeRange',{
     _user:{ type: Schema.Types.ObjectId, ref: 'User' ,required:true},
     description: {type:String,required:false},
@@ -72,12 +85,14 @@ mongoose.model('User', {
 
     //DIAG
     diagPriority:{type:Number},
+    //diagWebsiteComission:{type:Number,default:0},
     postCode:String,
     department:String,
     region:String,
     city:String,
     diplomes:[],
     comission:Number,
+
 
     //CLIENT
     clientType: {type:String}, //(landlord / agency / Foncière)
@@ -105,7 +120,9 @@ mongoose.model('Order', {
     fastDiagComm: {type:Number,default:0}, //
     pdfId: String,
     createdAt:{type:Date,default:Date.now},
-    updatedAt:{type:Date,default:Date.now}
+    updatedAt:{type:Date,default:Date.now},
+
+    _charge:{type:String} //stripe charge associated
 });
 
 /*

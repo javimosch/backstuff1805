@@ -1,7 +1,7 @@
 var mongoose = require('./db').mongoose;
 var user = require('./handlers.user');
 var order = require('./handlers.order');
-var payment = require('./handlers.payment');
+var payment = require('./stripeService');
 var stats = require('./handle.stats');
 var fileActions = require('./db.gridfs').actions;
 

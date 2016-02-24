@@ -11,7 +11,9 @@ var Order = mongoose.model('Order');
 var actions = require('./handler.actions').create('Order');
 var UserAction = require('./handlers.user').actions;
 
-var payment = require('./handlers.payment').actions;
+//var PaymentAction = require('./handlers/payment').actions;
+var stripe  = require('./stripeService').stripe;
+var payment = require('./stripeService').actions;
 
 var email = require('./handlers.email').actions;
 
@@ -28,21 +30,35 @@ function pay(data, cb) {
         var _userID = data._client && data._client._id || data._client;
         UserAction.get({ _id: _userID }, (err, _user) => {
             if (err) return cb(err, _user);
+            _user.stripeToken = data.stripeToken;//
             if (_user.stripeCustomer) {
                 data.stripeCustomer = _user.stripeCustomer;
-                _payIfNotPaidYet(data);
+                stripe.customers.retrieve(
+                    data.stripeCustomer,
+                    function(err, customer) {
+                        if (customer) {
+                            _payIfNotPaidYet(data);
+                        } else {
+                            _createCustomer(_user);
+                        }
+                    }
+                );
             } else {
                 _user.stripeToken = data.stripeToken;
-                payment.createCustomer(_user, (err, stripeCustomer) => {
-                    if (err) return cb(err, r);
-                    _user.stripeCustomer = stripeCustomer.id;
-                    data.stripeCustomer = stripeCustomer.id;
-                    _user.save();
-                    //
-                    return _payIfNotPaidYet(data);
-                });
+                _createCustomer(_user);
             }
         });
+
+        function _createCustomer(_user) {
+            payment.createCustomer(_user, (err, stripeCustomer) => {
+                if (err) return cb(err, r);
+                _user.stripeCustomer = stripeCustomer.id;
+                data.stripeCustomer = stripeCustomer.id;
+                _user.save();
+                //
+                return _payIfNotPaidYet(data);
+            });
+        }
 
         function _payIfNotPaidYet(data) {
             actions.log('_payIfNotPaidYet=' + JSON.stringify(data));
@@ -101,7 +117,7 @@ function orderHasPayment(data, cb) {
     //
     var rta = false;
     payment.listCustomerCharges({ stripeCustomer: data.stripeCustomer }, (err, _chargeR) => {
-        if (err) return cb(err, r);
+        if (err) return cb(err, _chargeR);
         var _charges = _chargeR.data;
         _charges.forEach((_charge) => {
             if (_charge.metadata._order == data._id) {
@@ -206,13 +222,13 @@ function save(data, cb) {
 
     //setInfo
     data.info = data.info || {};
-    data.info=Object.assign(data.info||{},{
-        sell:data.info.sell||data.sell||undefined,
-        house:data.info.house||data.house||undefined,
-        squareMeters:data.info.squareMeters||data.squareMeters||undefined,
-        apartamentType:data.info.apartamentType||data.apartamentType||undefined,
-        constructionPermissionDate:data.info.constructionPermissionDate||data.constructionPermissionDate||undefined,
-        gasInstallation:data.info.gasInstallation||data.gasInstallation||undefined,
+    data.info = Object.assign(data.info || {}, {
+        sell: data.info.sell || data.sell || undefined,
+        house: data.info.house || data.house || undefined,
+        squareMeters: data.info.squareMeters || data.squareMeters || undefined,
+        apartamentType: data.info.apartamentType || data.apartamentType || undefined,
+        constructionPermissionDate: data.info.constructionPermissionDate || data.constructionPermissionDate || undefined,
+        gasInstallation: data.info.gasInstallation || data.gasInstallation || undefined,
     });
 
     actions.createUpdate(data, (err, r) => {
@@ -255,18 +271,15 @@ function orderExists(data, cb) {
             actions.log('orderExists:getAll:reading=' + JSON.stringify(r._client.email));
             if (r && r._client.email == data.email) {
                 //check dates sameday same hour
-                var sameOrder = true
-                    &&moment(r.diagStart).isSame(data.diagStart,'day')
-                    &&moment(r.diagEnd).isSame(data.diagEnd,'day')
-                    &&r.price == data.price;
-                if(sameOrder){
+                var sameOrder = true && moment(r.diagStart).isSame(data.diagStart, 'day') && moment(r.diagEnd).isSame(data.diagEnd, 'day') && r.price == data.price;
+                if (sameOrder) {
                     rta = r;
                     return false;
                 }
-            } 
+            }
         });
         actions.log('orderExists:rta=' + JSON.stringify(rta));
-        return cb(rta?"ORDER_EXISTS":null,rta); //returns the order as result
+        return cb(rta ? "ORDER_EXISTS" : null, rta); //returns the order as result
     });
 }
 

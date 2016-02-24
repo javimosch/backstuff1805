@@ -1,5 +1,5 @@
 var Order = require('./handler.actions').create('Order');
-var User = require('./handler.actions').create('Order');
+var User = require('./handler.actions').create('User');
 var getFile = require('./utils').getFile;
 var sendEmail = require('./utils.mailing').sendEmail;
 var moment = require('moment');
@@ -7,7 +7,7 @@ var S = require('string');
 var btoa = require('btoa')
 var adminUrl = require('./utils').adminUrl;
 var formatTime = require('./utils').formatTime;
-
+var _ = require('lodash');
 
 var stripeSecretTokenDEV = "sk_test_P9NzNL96T3X3FEgwOVxw8ovm";
 var stripe = require("stripe")(process.env.stripeSecretToken || stripeSecretTokenDEV);
@@ -20,6 +20,7 @@ var actions = {
     }
 };
 
+//require: _id (charge or refound)
 function associatedOrder(data, cb) {
     //data.source
     if (data.source.indexOf('ch') !== -1) {
@@ -64,6 +65,41 @@ function balanceTransactions(data, cb) {
 function balance(data, cb) {
     stripe.balance.retrieve(function(err, balance) {
         cb(err, balance);
+    });
+}
+
+function listDiagCharges(data, cb) {
+    actions.log('listDiagCharges=' + JSON.stringify(data));
+    stripe.charges.list((err, charges) => {
+        if (err) return cb(err, null);
+        cb(null, charges.data.filter((charge) => {
+            return charge.metadata._orderDiag == data._diag;
+        }));
+    });
+}
+
+function diagBalance(data, cb) {
+    actions.log('diagBalance=' + JSON.stringify(data));
+    listDiagCharges(data, (err, charges) => {
+        if (err) return cb(err, charges);
+        actions.log('diagBalance:charges=' + JSON.stringify(charges));
+        User.get({
+            _id: data._diag
+        }, (err, _user) => {
+            actions.log('diagBalance:user=' + JSON.stringify(_user));
+            if (err) return cb(err, charges);
+            if (_user) {
+                var balance = _.sumBy(charges, (c) => {
+                    return c.amount;
+                });
+                cb(null, {
+                    balance:balance,
+                    email:_user.email
+                });
+            } else {
+                cb("_user not found with " + data._diag);
+            }
+        });
     });
 }
 
@@ -130,6 +166,8 @@ function payOrder(_order, cb) {
         customer: _order.stripeCustomer,
         metadata: {
             _order: _order._id,
+            _orderDiag: _order._diag._id || _order._diag,
+            _orderClient: _order._client._id || _order._client,
             _orderDescription: _order.address + ' (' + formatTime(_order.diagStart) + ' - ' + formatTime(_order.diagEnd) + ')',
             _orderURL: adminUrl('/orders/edit/' + _order._id)
         }
@@ -161,7 +199,10 @@ function captureOrderCharge(charge, cb) {
     });
 }
 
+exports.stripe = stripe;
 exports.actions = {
+    listDiagCharges: listDiagCharges,
+    diagBalance: diagBalance,
     payOrder: payOrder,
     createCustomer: createCustomer,
     listCustomerCharges: listCustomerCharges,

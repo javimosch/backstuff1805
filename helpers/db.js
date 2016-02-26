@@ -92,6 +92,7 @@ mongoose.model('User', {
     region:String,
     city:String,
     diplomes:[{ type: Schema.Types.ObjectId, ref: 'fs.files' }],
+    diplomesInfo:{type:{}}, //expiration date, obtention date, file info, etc.
     comission:Number,
     disabled:{type:Boolean,default:false},
 

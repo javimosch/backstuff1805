@@ -68,12 +68,12 @@ function get(data, cb) {
         throw err;
     });
 
-    find(data, (err, files) => {
-        var rta = files[0];
+    find(data, (err, file) => {
+        var rta = file;
         actions.log('get:end=' + JSON.stringify(rta));
         rta.stream = readstream;
         cb(null, rta);
-    })
+    });
 }
 
 //save a file (type=file need to be the last item of the form.)

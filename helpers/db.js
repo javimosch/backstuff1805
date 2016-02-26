@@ -1,6 +1,7 @@
 require('es6-promise').polyfill();
 var mongoose = require('mongoose');
 var configureGridFS = require('./db.gridfs').configure;
+var configureGridFSActions = require('./db.gridfs').configureActions;
 
 var Schema = mongoose.Schema;
 
@@ -90,7 +91,7 @@ mongoose.model('User', {
     department:String,
     region:String,
     city:String,
-    diplomes:[],
+    diplomes:[{ type: Schema.Types.ObjectId, ref: 'fs.files' }],
     comission:Number,
     disabled:{type:Boolean,default:false},
 
@@ -123,6 +124,10 @@ mongoose.model('Order', {
     createdAt:{type:Date,default:Date.now},
     updatedAt:{type:Date,default:Date.now},
 
+    keysWhere:{type:String},
+    keysAddress:{type:String},
+    keysTime:{type:Date},
+
     _charge:{type:String} //stripe charge associated
 });
 
@@ -136,6 +141,8 @@ mongoose.model('Order', {
 
 
 exports.mongoose = mongoose;
+
+configureGridFSActions();
 
 
 

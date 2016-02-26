@@ -6,13 +6,15 @@ var generatePassword = require("password-maker");
 var inspect = require('util').inspect;
 
 var modelName = 'file';
-var actions = {
+/*var actions = {
     log: (m) => {
         console.log(modelName.toUpperCase() + ': ' + m);
     }
 };
+*/
 
-var conn, Schema, gfs, mongoose;
+
+var conn, Schema, gfs, mongoose, actions;
 
 exports.configure = (m) => {
     mongoose = m;
@@ -20,6 +22,12 @@ exports.configure = (m) => {
     conn = mongoose.connection;
     Schema = mongoose.Schema;
     gfs = Grid(conn.db);
+
+
+}
+
+exports.configureActions = () => {
+    actions = require('./handler.actions').create('File', mongoose);
 }
 
 function write(data, cb) {
@@ -73,6 +81,7 @@ function save(data, cb, req, res) {
     actions.log('save:start=' + JSON.stringify(data));
     if (req.busboy) {
         var requiredFileds = ['name', 'mimetype', 'file'];
+
         function _streamToDb(data) {
             actions.log('save:_streamToDb=' + JSON.stringify(Object.keys(data)));
             data.file.pipe(gfs.createWriteStream({
@@ -85,7 +94,7 @@ function save(data, cb, req, res) {
                 actions.log(msg);
                 cb(null, {
                     result: file,
-                    message:msg
+                    message: msg
                 });
             })
         }
@@ -139,13 +148,26 @@ function find(data, cb) {
     var opt = {};
     if (data.name) {
         opt = { filename: data.name };
+    } else {
+        opt = data;
     }
-    gfs.files.find(opt).toArray(function(err, files) {
-        if (err) return cb(err, null);
-        var ff = files.map((f) => ({ _id: f._id, filename: f.filename }));
-        actions.log('find:rta=' + JSON.stringify(ff));
-        cb(null, files);
-    });
+
+    if (opt._id) {
+        gfs.findOne({_id:opt._id},function(err, file) {
+            if (err) return cb(err, null);
+            actions.log('find:rta=' + JSON.stringify(file));
+            cb(null, file);
+        });
+    } else {
+        gfs.files.find(opt).toArray(function(err, files) {
+            if (err) return cb(err, null);
+            var ff = files.map((f) => ({ _id: f._id, filename: f.filename }));
+            actions.log('find:rta=' + JSON.stringify(ff));
+            cb(null, files);
+        });
+    }
+
+
 }
 
 function remove(data, cb) {

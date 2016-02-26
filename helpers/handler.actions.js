@@ -2,7 +2,8 @@ var mongoose = require('./db').mongoose;
 var validate = require('./validator').validate;
 var promise = require('./utils').promise;
 
-exports.create = function(modelName) {
+exports.create = function(modelName,m) {
+    if(!mongoose) mongoose = m;
     var Model = mongoose.model(modelName);
 
 

@@ -73,7 +73,9 @@ mongoose.model('User', {
     lastName:String,
     passwordSended:{type:Boolean,default:false},
     address:String, 
-    tel: String,
+    fixedTel: String,
+    cellPhone: String,
+
 
     //DIAG / CLIENT
     _orders:[{ type: Schema.Types.ObjectId, ref: 'Order' }], 

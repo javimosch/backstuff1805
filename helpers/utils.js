@@ -21,8 +21,12 @@ exports.getFile = (file) => readFileSync(file,undefined, false);
 
 //routing
 function adminUrl(join) {
-    console.log('Using adminURL: '+ process.env.adminURL);
-    var url = (process.env.adminURL || 'http://localhost:3000/admin#') + join;
+    console.log('Using adminURL VAR: '+ process.env.adminURL);
+    var path = process.env.adminURL || 'http://localhost:3000/admin#';
+    if(!process.env.adminURL){
+        console.log('process.env.adminURL not found. Using '+path);
+    }
+    var url = path + join;
     url = url.replace('//', '/');
     return url;
 }

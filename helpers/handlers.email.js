@@ -89,21 +89,42 @@ function newOrder(_user, _order, cb) {
 }
 
 //Email from Agency to Landlord
-function OrderPaymentLink(_user, _order, cb) {
-    actions.log('OrderPaymentLink=' + JSON.stringify(_user));
-    send({
-        to: _order.landLordEmail,
-        subject: "Payment notification",
-        templateName: 'agency.payment-link',
-        templateReplace: {
-            '$NAME': _user.firstName || _user.email,
-            '$AGENCY': _order._client.firstName || _user.email,
-            '$ORDER_DESCRIPTION': _order.address + ' (' + time(_order.diagStart) + ' - ' + time(_order.diagEnd) + ')',
-            '$ORDER_AMOUNT': _order.price,
-            '$ORDER_PAY_LINK': adminUrl('/orders/view/' + _order._id)
-        },
-        cb: cb
-    });
+function orderPaymentLink(_order, cb) {
+    actions.log('orderPaymentLink=' + JSON.stringify(_order));
+    if (typeof _order._client === 'string') {
+        if (_order._id) return cb("_id required");
+        actions.log('orderPaymentLink:updating-order');
+        return Order.update(_order, () => {
+            _order.__populate = {
+                _client: 'email firstName lastName'
+            };
+            actions.log('orderPaymentLink:fetching-order');
+            Order.getById(_order, _send);
+        });
+    } else {
+        _send(null,_order);
+    }
+
+    function _send(err,_order) {
+        if(err) return cb(err,_order);
+        actions.log('orderPaymentLink:sending..');
+        send({
+            to: _order.landLordEmail,
+            subject: "Payment notification",
+            templateName: 'agency.payment-link',
+            templateReplace: {
+                '$NAME': _order.landLordFullName || _order.landLordEmail,
+                '$AGENCY': _order._client.firstName || _order._client.email,
+                '$ORDER_DESCRIPTION': _order.address + ' (' + time(_order.diagStart) + ' - ' + time(_order.diagEnd) + ')',
+                '$ORDER_AMOUNT': _order.price,
+                '$ORDER_PAY_LINK': adminUrl('/orders/view/' + _order._id)
+            },
+            cb: (err,r)=>{
+                actions.log('orderPaymentLink:sended!');
+                return cb(err,r);
+            }
+        });
+    }
 }
 
 function orderPaymentSuccess(_user, _order, cb) {
@@ -207,5 +228,6 @@ exports.actions = {
     handleNewAccount: handleNewAccount,
     newOrder: newOrder,
     passwordReset: passwordReset,
-    orderPaymentSuccess: orderPaymentSuccess
+    orderPaymentSuccess: orderPaymentSuccess,
+    orderPaymentLink:orderPaymentLink
 };

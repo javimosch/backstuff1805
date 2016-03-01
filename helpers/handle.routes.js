@@ -4,7 +4,7 @@ var order = require('./handlers.order');
 var payment = require('./stripeService');
 var stats = require('./handle.stats');
 var fileActions = require('./db.gridfs').actions;
-
+var emailActions = require('./handlers.email').actions;
 
 
 var _ = require('lodash');
@@ -103,6 +103,10 @@ exports.configure = function(app) {
 
         if (controller == 'File') {
             Object.assign(actions, fileActions);
+        }
+
+        if (controller == 'Email') {
+            Object.assign(actions, emailActions);
         }
 
         if(actions[action]){

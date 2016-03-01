@@ -287,15 +287,21 @@ function saveWithEmail(data, cb) {
     actions.log('saveWithEmail=' + JSON.stringify(data));
     actions.check(data, ['email', '_diag', 'diagStart', 'diagEnd'
 
-        , 'diags', 'address', 'price' //, 'time'
+        , 'diags', 'address', 'price' , 'clientType'
     ], (err, r) => {
         if (err) return cb(err, r);
         //
         orderExists(data, (err, r) => {
             if (err) return cb(err, r);
+
+            if(data._client){
+                return save(data,cb);
+            }
+
             UserAction.get({
                 email: data.email,
-                type: 'client'
+                userType: 'client',
+                clientType:data.clientType,
             }, (err, r) => {
                 if (err) return cb(err, r);
                 actions.log('saveWithEmail=user:get:return' + JSON.stringify(r));

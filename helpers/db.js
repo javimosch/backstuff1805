@@ -41,6 +41,7 @@ configureGridFS(mongoose);
 mongoose.model('Payment',{});
 mongoose.model('Stats',{});
 mongoose.model('File',{});
+mongoose.model('Email',{});
 
 mongoose.model('Balance',{
     _user:{ type: Schema.Types.ObjectId, ref: 'User' ,required:true},

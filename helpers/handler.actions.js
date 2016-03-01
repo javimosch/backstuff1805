@@ -2,23 +2,23 @@ var mongoose = require('./db').mongoose;
 var validate = require('./validator').validate;
 var promise = require('./utils').promise;
 
-exports.create = function(modelName,m) {
-    if(!mongoose) mongoose = m;
+exports.create = function(modelName, m) {
+    if (!mongoose) mongoose = m;
     var Model = mongoose.model(modelName);
 
 
 
 
     function log(x) {
-        console.log('');//enter
+        console.log(''); //enter
         //
         var args = arguments;
         var msg = '';
-        Object.keys(args).forEach((arg,i)=>{
-            if(msg==='')    msg+=args[arg].toString().toUpperCase();
-            else            msg+= ", "+args[arg].toString();
+        Object.keys(args).forEach((arg, i) => {
+            if (msg === '') msg += args[arg].toString().toUpperCase();
+            else msg += ", " + args[arg].toString();
         });
-        console.log(modelName.toUpperCase() + ': '+msg);
+        console.log(modelName.toUpperCase() + ': ' + msg);
     }
 
     function existsById(_id, cb) {
@@ -162,13 +162,31 @@ exports.create = function(modelName,m) {
                 }
             }
 
-            log('result=',JSON.stringify(rta));
+            log('result=', JSON.stringify(rta));
             if (options && options.__res) {
                 options.__res(res, rta);
             } else {
                 res.json(rta);
             }
         };
+    }
+
+    function getById(data, cb) {
+        log('getById=' + JSON.stringify(data));
+        check(data, ['_id'], (err, r) => {
+            if (err) return cb(err, r);
+            var query = Model.findById(data._id)
+            if (data.__select) {
+                query = query.select(data.__select);
+            }
+            if (data.__populate) {
+                query = populate(query, data.__populate);
+            }
+            query.exec((err, r) => {
+                if (err) return cb(err, r);
+                cb(null, r);
+            });
+        });
     }
 
     function get(data, cb) {
@@ -290,6 +308,7 @@ exports.create = function(modelName,m) {
         remove: remove,
         result: result,
         get: get,
+        getById: getById,
         check: check,
         removeAll: removeAll,
         toRules: toRules,

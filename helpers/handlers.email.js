@@ -88,6 +88,24 @@ function newOrder(_user, _order, cb) {
     });
 }
 
+//Email from Agency to Landlord
+function OrderPaymentLink(_user, _order, cb) {
+    actions.log('OrderPaymentLink=' + JSON.stringify(_user));
+    send({
+        to: _order.landLordEmail,
+        subject: "Payment notification",
+        templateName: 'agency.payment-link',
+        templateReplace: {
+            '$NAME': _user.firstName || _user.email,
+            '$AGENCY': _order._client.firstName || _user.email,
+            '$ORDER_DESCRIPTION': _order.address + ' (' + time(_order.diagStart) + ' - ' + time(_order.diagEnd) + ')',
+            '$ORDER_AMOUNT': _order.price,
+            '$ORDER_PAY_LINK': adminUrl('/orders/view/' + _order._id)
+        },
+        cb: cb
+    });
+}
+
 function orderPaymentSuccess(_user, _order, cb) {
     actions.log('orderPaymentSuccess=' + JSON.stringify({
         email: _user.email,

@@ -124,10 +124,18 @@ mongoose.model('Order', {
 //    time: String, //estimated time.
     fastDiagComm: {type:Number,default:0}, //
     pdfId: String,
+
+    /*client details of an agency*/
+    landLordFullName:{type:String},
+    landLordEmail:{type:String},
+    landLordPhone:{type:String},
+    landLordAddress:{type:String},
+    landLordPaymentEmailSended: {type:Boolean,default:false},
+
     createdAt:{type:Date,default:Date.now},
     updatedAt:{type:Date,default:Date.now},
 
-    keysWhere:{type:String},
+    //keysWhere:{type:String},
     keysAddress:{type:String},
     keysTime:{type:Date},
 

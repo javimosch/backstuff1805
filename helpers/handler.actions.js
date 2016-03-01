@@ -29,7 +29,15 @@ exports.create = function(modelName, m) {
             cb(err, r && r > 0);
         });
     }
-
+    //
+    function exists(data, cb) {
+        log('exists=' + JSON.stringify(data));
+        Model.count(toRules(data), (err, r) => {
+            log('exists=' + (r && (r > 0)||false));
+            cb(err, r && (r > 0)||false);
+        });
+    }
+    //
     function existsByField(name, val, cb) {
         log('existsByField=' + name + ':' + val);
         var data = {};
@@ -302,6 +310,7 @@ exports.create = function(modelName, m) {
         model: Model,
         existsById: existsById,
         existsByField: existsByField,
+        exists:exists,
         createUpdate: createUpdate,
         getAll: getAll,
         update: update,

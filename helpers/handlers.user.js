@@ -298,6 +298,7 @@ exports.actions = {
     balance: balance,
     save: save,
     createClientIfNew: createClientIfNew,
+    createClient:createClient,
     login: login,
     createDiag: createDiag,
     passwordReset: passwordReset,

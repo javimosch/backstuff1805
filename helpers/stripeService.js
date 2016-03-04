@@ -29,7 +29,11 @@ function associatedOrder(data, cb) {
         stripe.refunds.retrieve(
             data.source,
             function(err, refund) {
-                _charge(refund.charge);
+                if(refund.charge){
+                    _charge(refund.charge);    
+                }else{
+                    cb('Refund do not have a charge related.',refund);
+                }
             }
         );
     }

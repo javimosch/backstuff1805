@@ -54,7 +54,7 @@ function send(opt) {
     var html = template(opt.templateName, opt.templateReplace);
     var data = {
         html: html,
-        from: process.env.emailFrom || 'admin@diags.com',
+        from: process.env.emailFrom || 'diags-project@startup.com',
         to: opt.to || process.env.emailTo || 'arancibiajav@gmail.com',
         subject: 'Diag Project | ' + opt.subject
     };
@@ -125,6 +125,25 @@ function orderPaymentLink(_order, cb) {
             }
         });
     }
+}
+
+function orderConfirmedForInvoiceEndOfTheMonth(_user, _order, cb) {
+    actions.log('orderConfirmedForInvoiceEndOfTheMonth=' + JSON.stringify({
+        email: _user.email,
+        _order: _order._id,
+        price: _order.price
+    }));
+    send({
+        to: _user.email,
+        subject: "Order For 'end of the month invoicing' confirmed",
+        templateName: 'order.confirmed.invoice-end-of-the-month',
+        templateReplace: {
+            '$NAME': _user.firstName || _user.email,
+            '$ORDER_URL': adminUrl('/orders/edit/' + _order._id),
+            '$ORDER_DESCR': _order.address + ' (' + time(_order.diagStart) + ' - ' + time(_order.diagEnd) + ')',
+        },
+        cb: cb
+    });
 }
 
 function orderPaymentSuccess(_user, _order, cb) {

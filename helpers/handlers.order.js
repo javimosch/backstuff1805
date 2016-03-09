@@ -6,13 +6,14 @@ var generatePassword = require("password-maker");
 var validate = require('./validator').validate;
 var handleMissingKeys = require('./validator').handleMissingKeys;
 //var ClientActions = require('./handlers.client').actions;
-var User = mongoose.model('User');
+
 var Order = mongoose.model('Order');
+var User = require('./handler.actions').create('User');
 var actions = require('./handler.actions').create('Order');
 var UserAction = require('./handlers.user').actions;
 
 //var PaymentAction = require('./handlers/payment').actions;
-var stripe  = require('./stripeService').stripe;
+var stripe = require('./stripeService').stripe;
 var payment = require('./stripeService').actions;
 
 var email = require('./handlers.email').actions;
@@ -30,7 +31,7 @@ function pay(data, cb) {
         var _userID = data._client && data._client._id || data._client;
         UserAction.get({ _id: _userID }, (err, _user) => {
             if (err) return cb(err, _user);
-            _user.stripeToken = data.stripeToken;//
+            _user.stripeToken = data.stripeToken; //
             if (_user.stripeCustomer) {
                 data.stripeCustomer = _user.stripeCustomer;
                 stripe.customers.retrieve(
@@ -213,6 +214,35 @@ function _syncOrderStatus(_charge, isPaid) {
     actions.log('_syncOrderStatus=' + JSON.stringify(_charge.metadata._order));
 }
 
+function confirm(data, cb) {
+    actions.log('confirm=' + JSON.stringify(data));
+    actions.getById(data, (err, _order) => {
+        if (err) return cb(err, _order);
+        if (_order.status == 'created') {
+            _order.status = 'ordered';
+            _order.save();
+            User.getAll({ userType: 'admin' }, (err, _admins) => {
+                if (err) return cb(err, _admins);
+                _admins.forEach(_admin => {
+                    email.orderConfirmedForInvoiceEndOfTheMonth(_admin, _order, (err, r) => {
+                        if (r.ok) {
+                            cb({
+                                ok: true,
+                                message: 'Order confirmed and admins notified by email.'
+                            });
+                        }
+                    });
+                });
+            });
+        } else {
+            cb(null,{
+                ok: true,
+                message: 'Order already confirmed. (ordered)'
+            });
+        }
+    });
+}
+
 function create(data, cb) {
     actions.create(data, cb, saveKeys);
 }
@@ -245,11 +275,14 @@ function save(data, cb) {
             _diag._orders.push(_order.id);
             email.newOrder(_diag, _order, null);
         });
+
+        //admin get notified only when the order is prepaid or ordered.
+        /*
         UserAction.getAll({ userType: 'admin' }, (err, _admins) => {
             _admins.forEach((_admin) => {
                 email.newOrder(_admin, _order, null);
             })
-        });
+        });*/
 
     });
 }
@@ -287,21 +320,21 @@ function saveWithEmail(data, cb) {
     actions.log('saveWithEmail=' + JSON.stringify(data));
     actions.check(data, ['email', '_diag', 'diagStart', 'diagEnd'
 
-        , 'diags', 'address', 'price' , 'clientType'
+        , 'diags', 'address', 'price', 'clientType'
     ], (err, r) => {
         if (err) return cb(err, r);
         //
         orderExists(data, (err, r) => {
             if (err) return cb(err, r);
 
-            if(data._client){
-                return save(data,cb);
+            if (data._client) {
+                return save(data, cb);
             }
 
             UserAction.get({
                 email: data.email,
                 userType: 'client',
-                clientType:data.clientType,
+                clientType: data.clientType,
             }, (err, r) => {
                 if (err) return cb(err, r);
                 actions.log('saveWithEmail=user:get:return' + JSON.stringify(r));
@@ -331,6 +364,7 @@ exports.actions = {
     saveWithEmail: saveWithEmail,
     pay: pay,
     syncStripe: syncStripe,
+    confirm: confirm,
     //heredado
     existsById: actions.existsById,
     existsByField: actions.existsByField,

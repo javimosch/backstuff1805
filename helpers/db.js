@@ -73,7 +73,7 @@ mongoose.model('User', {
     firstName:String,
     lastName:String,
     passwordSended:{type:Boolean,default:false},
-    address:String, 
+    
     fixedTel: String,
     cellPhone: String,
 
@@ -81,27 +81,28 @@ mongoose.model('User', {
     //DIAG / CLIENT
     _orders:[{ type: Schema.Types.ObjectId, ref: 'Order' }], 
 
+    //google address
+    address:String, 
     city:String,
+    department:String,
+    region:String,
     country:String,
-    zipCode:String,
+    postCode:String,
 
     stripeCustomer:{type:String,default:null},
 
     //DIAG
-    diagPriority:{type:Number},
+    priority:{type:Number},
     //diagWebsiteComission:{type:Number,default:0},
-    postCode:String,
-    department:String,
-    region:String,
-    city:String,
     diplomes:[{ type: Schema.Types.ObjectId, ref: 'fs.files' }],
     diplomesInfo:{type:{}}, //expiration date, obtention date, file info, etc.
-    comission:Number,
+    commission:Number,
     disabled:{type:Boolean,default:false},
 
 
     //CLIENT
     clientType: {type:String}, //(landlord / agency / Foncière)
+    companyName: {type:String},
     siret: String,
     discount: {type:Number,default:0},
     
@@ -120,7 +121,7 @@ mongoose.model('Order', {
     notifications:Array,
     diagStart: {type:Date,required:true},
     diagEnd: {type:Date,required:true},
-    status: {type:String,default:'ordered'},
+    status: {type:String,default:'created'},
     price: {type:Number,required:true,default:0},
 //    time: String, //estimated time.
     fastDiagComm: {type:Number,default:0}, //
@@ -145,7 +146,8 @@ mongoose.model('Order', {
 
 /*
         status:
-            - ordered //just created 
+            - created //just created
+            - ordered //client (agency/other) clicks invoice end of the mont
             - prepaid //client paid first. When upload pdf -> complete
             - delivered // PDF uploaded first. When client paid -> complete
             - completed

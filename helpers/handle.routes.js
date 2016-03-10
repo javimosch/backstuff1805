@@ -109,6 +109,7 @@ exports.configure = function(app) {
             Object.assign(actions, emailActions);
         }
 
+
         if(actions[action]){
             actions[action](data, actions.result(res),req,res);
         }else{

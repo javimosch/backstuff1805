@@ -112,6 +112,8 @@ exports.create = function(modelName, m) {
             //
             function rta(err, r) {
                 if (err) error(err, r);
+                if(!cb) return;
+                if(err) return cb(err,r);
                 else then(err, r);
                 log('createUpdate:rta' + JSON.stringify(r));
                 return cb(err, r);
@@ -300,6 +302,7 @@ exports.create = function(modelName, m) {
             Model.update({
                 _id: _id
             }, data, (err, r) => {
+                if(!cb) return;
                 if (err) return cb(err, null);
                 return cb(null, r);
             });
@@ -312,6 +315,8 @@ exports.create = function(modelName, m) {
         existsByField: existsByField,
         exists:exists,
         createUpdate: createUpdate,
+        save:createUpdate,
+        create:_create,
         getAll: getAll,
         update: update,
         remove: remove,

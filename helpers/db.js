@@ -43,6 +43,29 @@ mongoose.model('Stats',{});
 mongoose.model('File',{});
 mongoose.model('Email',{});
 
+mongoose.model('Log',{
+    type:{type:String,default:'Error'}, //Info, Warning, Error.
+    message:{type:String},
+    created:{type:Date,default: new Date()}
+});
+
+mongoose.model('UserNotifications',{
+    _user:{ type: Schema.Types.ObjectId, ref: 'User' ,required:true},
+    disabledTypes:{type:[],default:[]}, //ex: ['newAccount'] //disable emailing notifications for new accounts.
+    notifications:{type:[{ type: Schema.Types.ObjectId, ref: 'Notification' }],default:[]}
+})
+mongoose.model('Notification',{
+    _config:{ type: Schema.Types.ObjectId, ref: 'UserNotifications' ,required:true},
+    _user:{ type: Schema.Types.ObjectId, ref: 'User' ,required:true},
+    type:{type:String,required:true},
+    to:{type:String,required:true},
+    subject:{type:String,required:true},
+    contents:{type:String,required:true},
+    sended:{type:Boolean,default:false},
+    sendedDate:{type:Date},
+    created:{type:Date,default: new Date()}
+});//After 30 days, all the notifications are destroyed.
+
 mongoose.model('Balance',{
     _user:{ type: Schema.Types.ObjectId, ref: 'User' ,required:true},
     amount:{type:String,required:true},

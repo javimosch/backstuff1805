@@ -235,7 +235,7 @@ function confirm(data, cb) {
                 });
             });
         } else {
-            cb(null,{
+            cb(null, {
                 ok: true,
                 message: 'Order already confirmed. (ordered)'
             });
@@ -300,19 +300,37 @@ function orderExists(data, cb) {
         actions.log('orderExists:getAll:err:?=' + JSON.stringify(err));
         if (err) return cb(err, list);
         var rta = null;
+        var rtaErr = null;
         list.forEach((r) => {
             actions.log('orderExists:getAll:reading=' + JSON.stringify(r._client.email));
-            if (r && r._client.email == data.email) {
-                //check dates sameday same hour
-                var sameOrder = true && moment(r.diagStart).isSame(data.diagStart, 'day') && moment(r.diagEnd).isSame(data.diagEnd, 'day') && r.price == data.price;
-                if (sameOrder) {
-                    rta = r;
-                    return false;
+            //check dates sameday same hour, same address
+            var sameOrder = true && moment(r.diagStart).isSame(data.diagStart, 'day') && moment(r.diagEnd).isSame(data.diagEnd, 'day') && r.price == data.price && r.address == data.address;
+            if (!rta) {
+                if (r && r._client.email == data.email) {
+                    if (sameOrder) {
+                        rta = r;
+                        rtaErr = 'ORDER_EXISTS';
+                        actions.log('orderExists:exists=' + JSON.stringify({
+                            sameOrder:sameOrder,
+                            clientEmail:r._client.email,
+                            clientEmailBooking:data.email
+                        }));
+                    }
+                } else {
+                    if (sameOrder) {
+                        rta = r;
+                        rtaErr = 'ORDER_TAKEN';
+                        actions.log('orderExists:taken=' + JSON.stringify({
+                            sameOrder:sameOrder,
+                            clientEmail:r._client.email,
+                            clientEmailBooking:data.email
+                        }));
+                    }
                 }
             }
         });
         actions.log('orderExists:rta=' + JSON.stringify(rta));
-        return cb(rta ? "ORDER_EXISTS" : null, rta); //returns the order as result
+        return cb(rtaErr, rta); //returns the order as result
     });
 }
 

@@ -5,8 +5,14 @@ var configureGridFSActions = require('./db.gridfs').configureActions;
 
 var Schema = mongoose.Schema;
 
+var LOCAL = process.env.LOCAL && process.env.LOCAL.toString() == '1' || false;
+
 // Build the connection string 
 var dbURI = 'mongodb://root:root@ds059165.mongolab.com:59165/inspectors'; 
+
+if(LOCAL){
+    dbURI = 'mongodb://localhost:27017/scotchbox'; 
+}
 
 // Create the database connection 
 mongoose.connect(dbURI); 

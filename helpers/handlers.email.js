@@ -134,6 +134,25 @@ function time(d) {
     return moment(d).format('HH:mm');
 }
 
+function diplomeExpiration(data,cb){
+    actions.log('diplomeExpiration='+JSON.stringify(data));
+    //data = {_admin,_diag,}
+    //vars: ADMIN_NAME DIAG_NAME DIAG_DIPLOME_FILENAME DIAG_EDIT_URL
+    send({
+        _user:data._admin,
+        to: data._admin.email,
+        subject: "Diag diplome expiration",
+        templateName: 'diplome.expiration',
+        templateReplace: {
+            '$ADMIN_NAME': data._admin.firstName || data._admin.email,
+            '$DIAG_NAME': data._diag.firstName || data._diag.email,
+            '$DIAG_DIPLOME_FILENAME': data.filename,
+            '$DIAG_EDIT_URL': adminUrl('/diags/edit/' + data._diag._id),
+        },
+        cb: ()=>{}
+    },cb);
+}
+
 function newOrder(_user, _order, cb) {
     actions.log('newOrder=' + JSON.stringify(_user));
     send({
@@ -353,6 +372,7 @@ function passwordReset(_user, cb) {
 }
 
 exports.actions = {
+    diplomeExpiration:diplomeExpiration,
     clientNewAccount: clientNewAccount,
     diagNewAccount: diagNewAccount,
     adminNewAccount: adminNewAccount,

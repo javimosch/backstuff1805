@@ -12,6 +12,9 @@ var email = require('./handlers.email').actions;
 var _ = require('lodash');
 var moment = require('moment');
 
+
+//User.methods.name = ()=>{return };
+
 function balance(data, cb) {
     data.period = data.period || 'year';
     actions.log('balance=' + JSON.stringify(data));

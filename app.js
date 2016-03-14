@@ -8,6 +8,7 @@ var inspect = require('util').inspect;
 
 require('./helpers/db');
 var configureRoutes = require('./helpers/handle.routes').configure;
+var configureProgrammedTasks = require('./helpers/programmedTasks').configure;
 
 var app = express();
 
@@ -78,6 +79,9 @@ app.get('/', function (req, res) {
 });
 
 configureRoutes(app);
+configureProgrammedTasks(app);
+
+
 
 var port = process.env.PORT || 5000;
 app.listen(port, function () {

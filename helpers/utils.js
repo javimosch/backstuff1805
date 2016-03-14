@@ -28,6 +28,7 @@ function adminUrl(join) {
     }
     var url = path + join;
     url = url.replace('//', '/');
+    url = url.replace(':/','://');
     return url;
 }
 exports.adminUrl = adminUrl;

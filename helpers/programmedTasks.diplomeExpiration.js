@@ -83,6 +83,6 @@ function sendEmail(_admin, _diag, _info, _diplomeId) {
 
 module.exports = {
     name: name,
-    interval: 10000,
+    interval: 1000 * 60 * 60, //each hour
     handler: handler
 };

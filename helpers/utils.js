@@ -62,7 +62,7 @@ function MyPromise(cb) {
         }
     };
     cb(resolve, error,emit);
-    rta = {
+    var rta = {
         then: function(cb) {
             if (_scope.res) cb(_scope.res);
             else _scope.cb = cb;

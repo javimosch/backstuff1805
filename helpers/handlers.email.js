@@ -54,7 +54,6 @@ function dummy(cb) {
 }
 
 function send(opt, resCb) {
-    if (process.env.disableMailing === '1') return dummy(opt.cb);
     var html = opt.html || template(opt.templateName, opt.templateReplace);
     if (opt.subject) {
         if (opt.subject.indexOf('Diag Project') == -1) {
@@ -92,16 +91,31 @@ function send(opt, resCb) {
                     return dblog('notification getById fail in function send');
                 }
                 if (!_.includes(_notification._config.disabledTypes, _notification.type)) {
+                    
+                    if (process.env.disableMailing === '1') {
+                        _notification.sended = true;
+                        Notification.update(_notification, (err, _notification) => {
+                            if (err) dblog('notification sended update fail in function send.');
+
+                            if (resCb) resCb(null, {
+                                message: 'Sended'
+                            });
+
+                        });
+                        return dummy(opt.cb);
+                    }
+
                     _send(_notification);
-                }else{
-                    if(resCb){
-                        resCb('SENDING_DISABLED_TYPE',"");
+                } else {
+                    if (resCb) {
+                        resCb('SENDING_DISABLED_TYPE', "");
                     }
                 }
             });
         }
 
     } else {
+        if (process.env.disableMailing === '1') return dummy(opt.cb);
         _send();
     }
 
@@ -134,12 +148,12 @@ function time(d) {
     return moment(d).format('HH:mm');
 }
 
-function diplomeExpiration(data,cb){
-    actions.log('diplomeExpiration='+JSON.stringify(data));
+function diplomeExpiration(data, cb) {
+    actions.log('diplomeExpiration=' + JSON.stringify(data));
     //data = {_admin,_diag,}
     //vars: ADMIN_NAME DIAG_NAME DIAG_DIPLOME_FILENAME DIAG_EDIT_URL
     send({
-        _user:data._admin,
+        _user: data._admin,
         to: data._admin.email,
         subject: "Diag diplome expiration",
         templateName: 'diplome.expiration',
@@ -149,14 +163,15 @@ function diplomeExpiration(data,cb){
             '$DIAG_DIPLOME_FILENAME': data.filename,
             '$DIAG_EDIT_URL': adminUrl('/diags/edit/' + data._diag._id),
         },
-        cb: ()=>{}
-    },cb);
+        cb: () => {}
+    }, cb);
 }
 
 function newOrder(_user, _order, cb) {
     actions.log('newOrder=' + JSON.stringify(_user));
+
     send({
-        _user:_user,
+        _user: _user,
         to: _user.email,
         subject: "New Order",
         templateName: 'new.order.created',
@@ -192,9 +207,9 @@ function orderPaymentLink(_order, cb) {
         if (err) return cb(err, _order);
         actions.log('orderPaymentLink:sending..');
         send({
-            _user:_order._client,
+            _user: _order._client,
             to: _order.landLordEmail,
-            subject: "Payment notification",
+            subject: "Payment delegation notification",
             templateName: 'agency.payment-link',
             templateReplace: {
                 '$NAME': _order.landLordFullName || _order.landLordEmail,
@@ -218,7 +233,7 @@ function orderConfirmedForInvoiceEndOfTheMonth(_user, _order, cb) {
         price: _order.price
     }));
     send({
-        _user:_user,
+        _user: _user,
         to: _user.email,
         subject: "Order For 'end of the month invoicing' confirmed",
         templateName: 'order.confirmed.invoice-end-of-the-month',
@@ -238,7 +253,7 @@ function orderPaymentSuccess(_user, _order, cb) {
         price: _order.price
     }));
     send({
-        _user:_user,
+        _user: _user,
         to: _user.email,
         subject: "Order Payment Notification",
         templateName: 'order.payment.success.' + _user.userType,
@@ -255,7 +270,7 @@ function orderPaymentSuccess(_user, _order, cb) {
 function diagNewAccount(_user, cb) {
     actions.log('diagNewAccount=' + JSON.stringify(_user));
     send({
-        _user:_user,
+        _user: _user,
         to: _user.email,
         subject: "New Diag Account",
         templateName: 'diag.new.account',
@@ -328,7 +343,7 @@ function saveNotification(_user, data, cb) {
 function clientNewAccount(_user, cb) {
     actions.log('clientNewAccount=' + JSON.stringify(_user));
     send({
-        _user:_user,
+        _user: _user,
         to: _user.email,
         subject: "New Client Account",
         templateName: 'client.new.account',
@@ -358,7 +373,7 @@ function handleNewAccount(_user, err, r) {
 function passwordReset(_user, cb) {
     actions.log('handlePasswordReset=' + JSON.stringify(_user));
     send({
-        _user:_user,
+        _user: _user,
         to: _user.email,
         subject: "Password reset",
         templateName: 'user.new.password',
@@ -372,7 +387,7 @@ function passwordReset(_user, cb) {
 }
 
 exports.actions = {
-    diplomeExpiration:diplomeExpiration,
+    diplomeExpiration: diplomeExpiration,
     clientNewAccount: clientNewAccount,
     diagNewAccount: diagNewAccount,
     adminNewAccount: adminNewAccount,

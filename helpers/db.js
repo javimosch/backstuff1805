@@ -14,6 +14,10 @@ if(LOCAL){
     dbURI = 'mongodb://localhost:27017/scotchbox'; 
 }
 
+if(process.env.dbURI){
+    dbURI = process.env.dbURI || dbURI;   
+}
+
 // Create the database connection 
 mongoose.connect(dbURI); 
 
@@ -147,7 +151,7 @@ mongoose.model('Order', {
     address:{type:String,required:true}, 
     info: {type:{},required:false},
     obs: String,
-    notifications:Array,
+    notifications:{type:[{ type: Schema.Types.ObjectId, ref: 'Notification' }],default:[]},
     diagStart: {type:Date,required:true},
     diagEnd: {type:Date,required:true},
     status: {type:String,default:'created'},
@@ -168,7 +172,8 @@ mongoose.model('Order', {
 
     //keysWhere:{type:String},
     keysAddress:{type:String},
-    keysTime:{type:Date},
+    keysTimeFrom:{type:Date},
+    keysTimeTo:{type:Date},
 
     _charge:{type:String} //stripe charge associated
 });

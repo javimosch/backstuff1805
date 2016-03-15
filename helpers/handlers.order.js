@@ -184,10 +184,11 @@ function syncStripe(data, cb) {
 
 function _syncOrderStatus(_charge, isPaid) {
     actions.log('_syncOrderStatus:charge=' + JSON.stringify(_charge.metadata));
+    actions.log('_syncOrderStatus:isPaid=' + JSON.stringify(isPaid));
     if (isPaid) {
         Order.update({
             _id: { $eq: _charge.metadata._order },
-            status: { $in: ['ordered'] }
+            status: { $in: ['created','ordered'] }
         }, {
             status: 'prepaid'
         }).exec();

@@ -1,10 +1,11 @@
 var mongoose = require('./db').mongoose;
+var getModel = require('./db').getModel;
 var validate = require('./validator').validate;
 var promise = require('./utils').promise;
 
 exports.create = function(modelName, m) {
     if (!mongoose) mongoose = m;
-    var Model = mongoose.model(modelName);
+    var Model = getModel(modelName);
 
 
 
@@ -33,8 +34,8 @@ exports.create = function(modelName, m) {
     function exists(data, cb) {
         log('exists=' + JSON.stringify(data));
         Model.count(toRules(data), (err, r) => {
-            log('exists=' + (r && (r > 0)||false));
-            cb(err, r && (r > 0)||false);
+            log('exists=' + (r && (r > 0) || false));
+            cb(err, r && (r > 0) || false);
         });
     }
     //
@@ -112,8 +113,8 @@ exports.create = function(modelName, m) {
             //
             function rta(err, r) {
                 if (err) error(err, r);
-                if(!cb) return;
-                if(err) return cb(err,r);
+                if (!cb) return;
+                if (err) return cb(err, r);
                 else then(err, r);
                 log('createUpdate:rta' + JSON.stringify(r));
                 return cb(err, r);
@@ -143,6 +144,55 @@ exports.create = function(modelName, m) {
             query = populate(query, data.__populate);
         }
         query.exec(cb);
+    }
+
+    function fillObject(object,data,propName,newPropName){
+        var assignable = {};
+        if(data[propName]){
+            assignable[newPropName||propName] = data[propName];
+        }
+        return Object.assign(object,assignable);
+    }
+
+    function paginate(data, cb) {
+        log('paginate=' + JSON.stringify(data));
+        var options = {};
+        options = fillObject(options,data,'__select','select');
+        options = fillObject(options,data,'__sort','sort');
+        options = fillObject(options,data,'__lean','lean');
+
+        if(data.__populate){
+            var __populate = data.__populate;
+            delete data.__populate;
+            var arr = [];
+            for(var x in __populate){
+                arr.push({
+                    path:x,
+                    select:__populate[x]
+                });
+            }
+            options.populate = arr;
+        }
+
+        options = fillObject(options,data,'__populate','populate');
+        options = fillObject(options,data,'__offset','offset');
+        options = fillObject(options,data,'__page','page');
+        options = fillObject(options,data,'__limit','limit');
+        //log('paginate:options:typeof:' + (typeof options));
+        log('paginate:options=' + JSON.stringify(options));
+        Model.paginate(toRules(data), options, function(err, result) {
+            if(err) cb(err,result);
+            //log('paginate:result=' + JSON.stringify(result));
+            cb(null,result);
+            /*
+            docs {Array} - Array of documents
+            total {Number} - Total number of documents in collection that match a query
+            limit {Number} - Limit that was used
+            [page] {Number} - Only if specified or default page/offset values were used
+            [pages] {Number} - Only if page specified or default page/offset values were used
+            [offset] {Number} - Only if specified or default page/offset values were used
+            */
+        });
     }
 
     function remove(data, cb) {
@@ -302,7 +352,7 @@ exports.create = function(modelName, m) {
             Model.update({
                 _id: _id
             }, data, (err, r) => {
-                if(!cb) return;
+                if (!cb) return;
                 if (err) return cb(err, null);
                 return cb(null, r);
             });
@@ -311,12 +361,13 @@ exports.create = function(modelName, m) {
 
     return {
         model: Model,
+        paginate:paginate,
         existsById: existsById,
         existsByField: existsByField,
-        exists:exists,
+        exists: exists,
         createUpdate: createUpdate,
-        save:createUpdate,
-        create:_create,
+        save: createUpdate,
+        create: _create,
         getAll: getAll,
         update: update,
         remove: remove,

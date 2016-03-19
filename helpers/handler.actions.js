@@ -50,6 +50,12 @@ exports.create = function(modelName, m) {
     }
     //
     function createUpdate(data, cb, matchData, requiredKeys) {
+        //matchData, requiredKeys: req,res (if is being called directly)
+        if(matchData.body || matchData.params){
+            matchData=null;
+            requiredKeys=null;
+        }
+
         return promise((then, error, emit) => {
             //
             log('createUpdate=' + JSON.stringify(data));

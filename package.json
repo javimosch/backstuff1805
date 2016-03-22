@@ -1,9 +1,10 @@
 {
-  "name": "asd",
-  "version": "0.0.0",
+  "name": "backstuff1805",
+  "version": "1.0.0",
   "description": "",
   "scripts": {
-    "start": "heroku local web"
+    "start": "heroku local web",
+    "test": "mocha"
   },
   "main": "index.js",
   "author": "",
@@ -12,6 +13,7 @@
     "body-parser": "^1.14.2",
     "btoa": "^1.1.2",
     "busboy": "^0.2.12",
+    "chai": "^3.5.0",
     "connect-busboy": "0.0.2",
     "es6-promise": "^3.0.2",
     "express": "^4.13.4",
@@ -22,6 +24,7 @@
     "lodash": "^4.3.0",
     "mailcomposer": "^3.6.2",
     "mailgun-js": "^0.7.7",
+    "mocha": "^2.4.5",
     "moment": "^2.11.2",
     "mongoose": "^4.4.2",
     "mongoose-paginate": "^5.0.0",

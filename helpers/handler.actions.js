@@ -51,7 +51,7 @@ exports.create = function(modelName, m) {
     //
     function createUpdate(data, cb, matchData, requiredKeys) {
         //matchData, requiredKeys: req,res (if is being called directly)
-        if(matchData.body || matchData.params){
+        if(matchData && (matchData.body || matchData.params)){
             matchData=null;
             requiredKeys=null;
         }

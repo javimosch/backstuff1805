@@ -1,10 +1,9 @@
-
 var diplomeExpirationTask = require('./programmedTasks.diplomeExpiration');
 
 //console.log('programmedTasks#1 : '+JSON.stringify(Object.keys(diplomeExpirationTask)||[]));
 
 var tasks = [
-	diplomeExpirationTask
+    diplomeExpirationTask
 ];
 
 //task:
@@ -17,13 +16,17 @@ var tasks = [
 */
 
 
-exports.configure=(app)=>{
-	tasks.forEach((t)=>{
+exports.configure = (app) => {
+    tasks.forEach((t) => {
 
-		setInterval(()=>{
-			console.log('ProgrammedTask-start: '+t.name);
-			t.handler(t,app);
-		},t.interval);
+        setInterval(() => {
+            console.log('ProgrammedTask-start: ' + t.name);
+            try {
+                t.handler(t, app);
+            } catch (e) {
+            	console.log('ProgrammedTask-exception',e);
+            }
+        }, t.interval);
 
-	});
+    });
 }

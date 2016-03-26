@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "start": "heroku local web",
-    "test": "mocha"
+    "test": "mocha | node app"
   },
   "main": "index.js",
   "author": "",

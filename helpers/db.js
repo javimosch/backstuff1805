@@ -52,8 +52,12 @@ model('Stats', {});
 model('File', {});
 model('Email', {});        
 
+model('Settings', {
+    pricePercentageIncrease:{}, //today, tomorrow, saturday
+});  
+
 model('Log', {
-    type: { type: String, default: 'Error' }, //Info, Warning, Error.
+    type: { type: String, default: 'error' }, //Info, Warning, Error.
     message: { type: String },
     created: { type: Date, default: new Date() }
 });

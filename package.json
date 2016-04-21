@@ -1,10 +1,11 @@
 {
   "name": "backstuff1805",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "",
   "scripts": {
     "start": "heroku local web",
-    "test": "mocha"
+    "test": "mocha",
+    "push": "node version.js"
   },
   "main": "index.js",
   "author": "arancibiajav@gmail.com",

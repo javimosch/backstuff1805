@@ -57,9 +57,9 @@ var LOCAL = process.env.LOCAL && process.env.LOCAL.toString() == '1' || false;
 var allowedOrigins = [];
 
 if(LOCAL){
-    allowedOrigins.push('*','*localhost:*','*localhost','http://blooming-refuge-27843.herokuapp.com');
+    allowedOrigins.push('*','*localhost:*','*localhost','https://blooming-refuge-27843.herokuapp.com');
 }else{
-    allowedOrigins.push('*','*localhost:*','*localhost','http://blooming-refuge-27843.herokuapp.com');
+    allowedOrigins.push('*','*localhost:*','*localhost','https://blooming-refuge-27843.herokuapp.com');
 }
 
 console.log('Using allowedOrigins:',allowedOrigins);

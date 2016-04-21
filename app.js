@@ -81,7 +81,7 @@ var message = 'Backstuff runing version '+config.version+'!';
 console.log(message);
 
 app.get('/', function (req, res) {
-  res.json({messsage:message});
+  res.json({messsage:message,support:config.author});
 });
 
 configureRoutes(app);

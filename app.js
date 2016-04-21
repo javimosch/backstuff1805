@@ -5,6 +5,7 @@ var bb = require('express-busboy');
 var busboy = require('connect-busboy');
 var path    = require("path");
 var inspect = require('util').inspect;
+var fs = require('fs');
 
 require('./helpers/db');
 var configureRoutes = require('./helpers/handle.routes').configure;
@@ -74,8 +75,13 @@ app.all('*', function(req, res, next) {
     next();
 });
 
+
+var config = JSON.parse(fs.readFileSync(process.cwd()+'/package.json'));
+var message = 'Backstuff runing version '+config.version+'!';
+console.log(message);
+
 app.get('/', function (req, res) {
-  res.json({messsage:'Hello World!'});
+  res.json({messsage:message});
 });
 
 configureRoutes(app);

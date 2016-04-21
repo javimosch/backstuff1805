@@ -7,7 +7,7 @@
     "test": "mocha"
   },
   "main": "index.js",
-  "author": "",
+  "author": "arancibiajav@gmail.com",
   "license": "ISC",
   "dependencies": {
     "body-parser": "^1.14.2",

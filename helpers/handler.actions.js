@@ -187,9 +187,9 @@ exports.create = function(modelName, m) {
         //log('paginate:options:typeof:' + (typeof options));
         log('paginate:options=' + JSON.stringify(options));
         Model.paginate(toRules(data), options, function(err, result) {
-            if(err) cb(err,result);
+            if(err) return cb(err,result);
             //log('paginate:result=' + JSON.stringify(result));
-            cb(null,result);
+            return cb(null,result);
             /*
             docs {Array} - Array of documents
             total {Number} - Total number of documents in collection that match a query

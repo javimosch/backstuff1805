@@ -149,6 +149,9 @@ exports.create = function(modelName, m) {
         if (data.__populate) {
             query = populate(query, data.__populate);
         }
+        if(data.__sort){
+            query = query.sort(data.__sort);
+        }
         query.exec(cb);
     }
 

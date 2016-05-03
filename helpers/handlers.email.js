@@ -361,10 +361,12 @@ function saveNotification(_user, data, cb) {
     }
 
     //data: html,from,to,subject
-    UserNotifications.getById(_user, (err, _config) => {
+    UserNotifications.get({
+        _user:_user
+    }, (err, _config) => {
         if (err) return dblog('UserNotifications getById fail for user ' + _user.email);
         if (!_config) {
-            dblog("UserNotifications not found for " + _user.email + '.', 'info');
+            //dblog("UserNotifications not found for " + _user.email + '.', 'info');
             UserNotifications.create({
                 _user: _user._id
             }, (err, _config) => {
@@ -388,6 +390,9 @@ function saveNotification(_user, data, cb) {
         }, (err, _notification) => {
             if (err) return dblog('saveNotification fail when creating a notification for user ' + _user.email);
             if (cb) cb(_notification);
+            
+            _config.notifications.push(_notification);
+            _config.save();
         });
     }
 }

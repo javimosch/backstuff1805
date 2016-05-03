@@ -49,75 +49,290 @@ process.on('SIGINT', function() {
 configureGridFS(mongoose);
 
 
-model('Payment', {});
-model('Stats', {});
-model('File', {});
-model('Email', {});        
+model('Payment', {
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
+});
+model('Stats', {
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
+});
+model('File', {
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
+});
+model('Email', {
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
+});
 
 model('Settings', {
-    pricePercentageIncrease:{}, //today, tomorrow, saturday
-});  
+    pricePercentageIncrease: {},
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
+});
+
+model('Text', {
+    code: {
+        type: String,
+        required: true
+    }, //EX: BOOKING_DPE_TITLE_2_CONTENT
+    description: {
+        type: String,
+        required: true
+    },
+    content: {
+        type: String
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
+});
 
 model('Log', {
-    type: { type: String, default: 'error' }, //Info, Warning, Error.
-    message: { type: String },
-    created: { type: Date, default: new Date() }
+    type: {
+        type: String,
+        default: 'error'
+    }, //Info, Warning, Error.
+    message: {
+        type: String
+    },
+    data: {
+        type: {},
+        default: {}
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
 });
 
 model('UserNotifications', {
-    _user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    disabledTypes: { type: [], default: [] }, //ex: ['newAccount'] //disable emailing notifications for new accounts.
-    notifications: { type: [{ type: Schema.Types.ObjectId, ref: 'Notification' }], default: [] }
+    _user: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    disabledTypes: {
+        type: [],
+        default: []
+    }, //ex: ['newAccount'] //disable emailing notifications for new accounts.
+    notifications: {
+        type: [{
+            type: Schema.Types.ObjectId,
+            ref: 'Notification'
+        }],
+        default: []
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
 })
 model('Notification', {
-    _config: { type: Schema.Types.ObjectId, ref: 'UserNotifications', required: true },
-    _user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    type: { type: String, required: true },
-    to: { type: String, required: true },
-    subject: { type: String, required: true },
-    contents: { type: String, required: true },
-    sended: { type: Boolean, default: false },
-    sendedDate: { type: Date },
-    created: { type: Date, default: new Date() }
+    _config: {
+        type: Schema.Types.ObjectId,
+        ref: 'UserNotifications',
+        required: true
+    },
+    _user: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    type: {
+        type: String,
+        required: true
+    },
+    to: {
+        type: String,
+        required: true
+    },
+    subject: {
+        type: String,
+        required: true
+    },
+    contents: {
+        type: String,
+        required: true
+    },
+    sended: {
+        type: Boolean,
+        default: false
+    },
+    sendedDate: {
+        type: Date
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
 }); //After 30 days, all the notifications are destroyed.
 
 model('Balance', {
-    _user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    amount: { type: String, required: true },
-    items: [{ type: Schema.Types.ObjectId, ref: 'BalanceItem' }],
+    _user: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    amount: {
+        type: String,
+        required: true
+    },
+    items: [{
+        type: Schema.Types.ObjectId,
+        ref: 'BalanceItem'
+    }],
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
 });
 model('BalanceItem', {
-    _user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    _order: { type: Schema.Types.ObjectId, ref: 'Order', required: true },
-    description: { type: String, required: true },
-    pending: { type: Boolean, required: true },
-    amount: { type: String, required: true }
+    _user: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    _order: {
+        type: Schema.Types.ObjectId,
+        ref: 'Order',
+        required: true
+    },
+    description: {
+        type: String,
+        required: true
+    },
+    pending: {
+        type: Boolean,
+        required: true
+    },
+    amount: {
+        type: String,
+        required: true
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
 });
 
 model('TimeRange', {
-    _user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    description: { type: String, required: false },
-    type: { type: String, required: true, default: 'work-exception' },
-    start: { type: Date, required: true },
-    end: { type: Date, required: true },
-    repeat: { type: String, required: true } //day, week, none
+    _user: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    description: {
+        type: String,
+        required: false
+    },
+    type: {
+        type: String,
+        required: true,
+        default: 'work-exception'
+    },
+    start: {
+        type: Date,
+        required: true
+    },
+    end: {
+        type: Date,
+        required: true
+    },
+    repeat: {
+        type: String,
+        required: true
+    }, //day, week, none
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
 });
 
 ///SCHEMAS
 model('User', {
     email: String,
-    userType: { type: String, default: 'admin' }, //admin client diag
+    userType: {
+        type: String,
+        default: 'admin'
+    }, //admin client diag
     password: String,
     firstName: String,
     lastName: String,
-    passwordSended: { type: Boolean, default: false },
+    passwordSended: {
+        type: Boolean,
+        default: false
+    },
 
     fixedTel: String,
     cellPhone: String,
 
 
     //DIAG / CLIENT
-    _orders: [{ type: Schema.Types.ObjectId, ref: 'Order' }],
+    _orders: [{
+        type: Schema.Types.ObjectId,
+        ref: 'Order'
+    }],
 
     //google address
     address: String,
@@ -127,69 +342,182 @@ model('User', {
     country: String,
     postCode: String,
 
-    stripeCustomer: { type: String, default: null },
+    stripeCustomer: {
+        type: String,
+        default: null
+    },
 
     //DIAG
-    priority: { type: Number },
+    priority: {
+        type: Number
+    },
     //diagWebsiteComission:{type:Number,default:0},
-    diplomes: [{ type: Schema.Types.ObjectId, ref: 'fs.files' }],
-    diplomesInfo: { type: {} }, //expiration date, obtention date, file info, etc.
+    diplomes: [{
+        type: Schema.Types.ObjectId,
+        ref: 'fs.files'
+    }],
+    diplomesInfo: {
+        type: {}
+    }, //expiration date, obtention date, file info, etc.
     commission: Number,
-    disabled: { type: Boolean, default: false },
+    disabled: {
+        type: Boolean,
+        default: false
+    },
 
 
     //CLIENT
-    clientType: { type: String }, //(landlord / agency / Foncière)
-    companyName: { type: String },
+    clientType: {
+        type: String
+    }, //(landlord / agency / Foncière)
+    companyName: {
+        type: String
+    },
     siret: String,
-    discount: { type: Number, default: 0 },
+    discount: {
+        type: Number,
+        default: 0
+    },
 
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
 });
 
 
 
 function model(n, def) {
+
+    if (!def.createdAt) {
+        def.createdAt = {
+            type: Date,
+            default: Date.now
+        };
+
+    }
+    if (!def.updatedAt) {
+        def.updatedAt = {
+            type: Date,
+            default: Date.now
+        }
+    }
+
     var schema = new mongoose.Schema(def);
     schema.plugin(mongoosePaginate);
+
+    schema.pre('save', function(next) {
+        var now = new Date();
+        this.updatedAt = now;
+        if (!this.createdAt) {
+            this.createdAt = now;
+        }
+        next();
+    });
+
     models[n] = mongoose.model(n, schema);
-}  
-exports.getModel=(n)=>models[n];
+}
+exports.getModel = (n) => models[n];
 
 
 model('Order', {
-    _diag: { type: Schema.Types.ObjectId, ref: 'User' },
-    _client: { type: Schema.Types.ObjectId, ref: 'User' },
-    diags: { type: {}, required: true },
-    address: { type: String, required: true },
-    info: { type: {}, required: false },
+    _diag: {
+        type: Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    _client: {
+        type: Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    diags: {
+        type: {},
+        required: true
+    },
+    address: {
+        type: String,
+        required: true
+    },
+    info: {
+        type: {},
+        required: false
+    },
     obs: String,
-    notifications: { type: [{ type: Schema.Types.ObjectId, ref: 'Notification' }], default: [] },
-    diagStart: { type: Date, required: true },
-    diagEnd: { type: Date, required: true },
-    status: { type: String, default: 'created' },
-    price: { type: Number, required: true, default: 0 },
+    notifications: {
+        type: [{
+            type: Schema.Types.ObjectId,
+            ref: 'Notification'
+        }],
+        default: []
+    },
+    diagStart: {
+        type: Date,
+        required: true
+    },
+    diagEnd: {
+        type: Date,
+        required: true
+    },
+    status: {
+        type: String,
+        default: 'created'
+    },
+    price: {
+        type: Number,
+        required: true,
+        default: 0
+    },
     //    time: String, //estimated time.
-    fastDiagComm: { type: Number, default: 0 }, //
+    fastDiagComm: {
+        type: Number,
+        default: 0
+    }, //
     pdfId: String,
 
     /*client details of an agency*/
-    landLordFullName: { type: String },
-    landLordEmail: { type: String },
-    landLordPhone: { type: String },
-    landLordAddress: { type: String },
-    landLordPaymentEmailSended: { type: Boolean, default: false },
+    landLordFullName: {
+        type: String
+    },
+    landLordEmail: {
+        type: String
+    },
+    landLordPhone: {
+        type: String
+    },
+    landLordAddress: {
+        type: String
+    },
+    landLordPaymentEmailSended: {
+        type: Boolean,
+        default: false
+    },
 
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    },
 
     //keysWhere:{type:String},
-    keysAddress: { type: String },
-    keysTimeFrom: { type: Date },
-    keysTimeTo: { type: Date },
+    keysAddress: {
+        type: String
+    },
+    keysTimeFrom: {
+        type: Date
+    },
+    keysTimeTo: {
+        type: Date
+    },
 
-    _charge: { type: String } //stripe charge associated
+    _charge: {
+        type: String
+    } //stripe charge associated
 });
 
 /*

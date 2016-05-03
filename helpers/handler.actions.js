@@ -55,6 +55,11 @@ exports.create = function(modelName, m) {
             matchData=null;
             requiredKeys=null;
         }
+        
+        if(data.__match){
+            matchData = data.__match;
+            delete data.__match;
+        }
 
         return promise((then, error, emit) => {
             //

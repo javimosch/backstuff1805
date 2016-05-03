@@ -102,27 +102,8 @@ model('Settings', {
     }
 });
 
-model('Text', {
-    code: {
-        type: String,
-        required: true
-    }, //EX: BOOKING_DPE_TITLE_2_CONTENT
-    description: {
-        type: String,
-        required: true
-    },
-    content: {
-        type: String
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
-    },
-    updatedAt: {
-        type: Date,
-        default: Date.now
-    }
-});
+require('../schemas/schema.category').configure(model);
+require('../schemas/schema.text').configure(model);
 
 model('Log', {
     type: {

@@ -8,7 +8,8 @@ var def = {
     },
     code: {
         type: String,
-        required: true
+        required: true,
+        unique:true
     }, //EX: BOOKING_DPE_TITLE_2_CONTENT
     description: {
         type: String,
@@ -17,6 +18,10 @@ var def = {
     content: {
         type: String,
         required: true
+    },
+    updatedByHuman:{
+        type:Boolean,
+        default:false
     },
     createdAt: {
         type: Date,

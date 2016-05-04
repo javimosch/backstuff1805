@@ -301,29 +301,28 @@ exports.create = function(modelName, m) {
             if (err) return cb(err, r);
             cb(err, r);
         });
-
     }
 
     function removeAll(data, cb, requiredKeys) {
         log('removeAll=' + JSON.stringify(data));
         //check(data, ['ids'], (err, r) => {
-        check(data, requiredKeys || [], (err, r) => {
-            if (err) {
-                cb(err, null);
-            }
-            else {
-                data = data || {};
-                var rules = data.ids ? {
-                    _id: {
-                        $all: data.ids
-                    }
-                } : {};
-                Model.remove(rules, (err, r) => {
-                    if (err) return cb(err, r);
-                    cb(err, r);
-                });
-            }
+        check(data, requiredKeys || ['ids'], (err, r) => {
+            if (err) return cb(err, null);
+            _removeIds();
         });
+
+        function _removeIds() {
+            data = data || {};
+            var rules = data.ids ? {
+                _id: {
+                    $all: data.ids
+                }
+            } : {};
+            Model.remove(rules, (err, r) => {
+                if (err) return cb(err, r);
+                cb(err, r);
+            });
+        }
     }
 
     function toRules(data) {
@@ -401,7 +400,7 @@ exports.create = function(modelName, m) {
         getAll: getAll,
         update: update,
         remove: remove,
-        removeWhen:removeWhen,
+        removeWhen: removeWhen,
         result: result,
         get: get,
         getById: getById,

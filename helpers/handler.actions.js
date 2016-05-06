@@ -23,7 +23,7 @@ exports.create = function(modelName, m) {
     }
 
     function existsById(_id, cb) {
-        log('existsById=' + id);
+        log('existsById=' + _id);
         Model.count(toRules({
             _id: _id
         }), (err, r) => {
@@ -32,7 +32,12 @@ exports.create = function(modelName, m) {
     }
     //
     function exists(data, cb) {
-        log('exists=' + JSON.stringify(data));
+        try {
+            log('exists=' + JSON.stringify(data));
+        }
+        catch (e) {
+            log('exists=','circular-json-error');
+        }
         Model.count(toRules(data), (err, r) => {
             log('exists=' + (r && (r > 0) || false));
             cb(err, r && (r > 0) || false);

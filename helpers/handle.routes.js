@@ -6,6 +6,7 @@ var stats = require('./handle.stats');
 var fileActions = require('./db.gridfs').actions;
 var emailActions = require('./handlers.email').actions;
 var textActions = require('../actions/text.actions').actions;
+var stripeActions = require('../actions/stripe.actions').actions;
 
 
 var _ = require('lodash');
@@ -114,6 +115,11 @@ exports.configure = function(app) {
             Object.assign(actions, textActions);
         }
 
+        if (controller == 'Stripe') {
+            Object.assign(actions, stripeActions);
+        }
+        
+        
 
 
         if(actions[action]){

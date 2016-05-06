@@ -7,9 +7,7 @@ var Schema = mongoose.Schema;
 var LOCAL = process.env.LOCAL && process.env.LOCAL.toString() == '1' || false;
 var models = {};
 // Build the connection string 
-//var dbURI = 'mongodb://root:root@ds059165.mongolab.com:59165/inspectors';
-var dbURI = 'mongodb://62.210.97.81:27017/inspectors';
-
+var dbURI = 'mongodb://root:root@ds011452.mlab.com:11452/manitas';
 
 if (LOCAL) {
     dbURI = 'mongodb://localhost:27017/scotchbox';

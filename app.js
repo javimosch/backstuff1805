@@ -1,9 +1,9 @@
 var express = require('express');
-var cors = require('express-cors')
+//var cors = require('express-cors')
 var bodyParser = require('body-parser')
 var bb = require('express-busboy');
 var busboy = require('connect-busboy');
-var path    = require("path");
+var path = require("path");
 var inspect = require('util').inspect;
 var fs = require('fs');
 
@@ -13,19 +13,45 @@ var configureProgrammedTasks = require('./helpers/programmedTasks').configure;
 
 var app = express();
 
+//app.use(cors());
+
+app.all('*', function(req, res, next) {
+    console.log(req.method);
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header('Access-Control-Allow-Methods', 'OPTIONS,GET,POST,PUT,DELETE');
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    if ('OPTIONS' == req.method) {
+        return res.send(200);
+    }
+    next();
+});
+
+/**
+app.options('*', cors({
+    origin:true,
+    allowedHeaders:'*',
+    methods:'*'
+}));
+
+app.post('*', cors({
+    origin:true,
+    allowedHeaders:'*',
+    methods:'*'
+}));*/
+
 app.use(busboy());
-app.use(function(req, res,next) {
-   
-  if (req.busboy) {
-    //req.busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
+app.use(function(req, res, next) {
+
+    if (req.busboy) {
+        //req.busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
         //console.log('file',fieldname,inspect(file),filename,encoding,mimetype);
-    //});
-    req.busboy.on('field', function(key, value, keyTruncated, valueTruncated) {
-        console.log('field',key,value,keyTruncated,valueTruncated);
-    });
-    //req.pipe(req.busboy).on('close',(a,b,c)=>{console.log('close',a,b,c)});
-  }
-  next();
+        //});
+        req.busboy.on('field', function(key, value, keyTruncated, valueTruncated) {
+            console.log('field', key, value, keyTruncated, valueTruncated);
+        });
+        //req.pipe(req.busboy).on('close',(a,b,c)=>{console.log('close',a,b,c)});
+    }
+    next();
 });
 
 /*
@@ -42,40 +68,52 @@ app.use(function(req,res,next){
 });
 */
 
-app.use(bodyParser.urlencoded({ extended: true }))
-/*
-bb.extend(app,{
-    upload:true,
-    path: path.join(__dirname+'/uploads')
-});*/
+app.use(bodyParser.urlencoded({
+        extended: true
+    }))
+    /*
+    bb.extend(app,{
+        upload:true,
+        path: path.join(__dirname+'/uploads')
+    });*/
 app.use(bodyParser.json());
 
 
 
 
 var LOCAL = process.env.LOCAL && process.env.LOCAL.toString() == '1' || false;
-var allowedOrigins = [];
+//var allowedOrigins = [];
 
+/*
 if(LOCAL){
     allowedOrigins.push('*','*localhost:*','*localhost','https://blooming-refuge-27843.herokuapp.com');
 }else{
     allowedOrigins.push('*','*localhost:*','*localhost','https://blooming-refuge-27843.herokuapp.com');
-}
+}*/
 
-console.log('Using allowedOrigins:',allowedOrigins);
+//console.log('Using allowedOrigins:', allowedOrigins);
 
-app.use(cors({
-	allowedOrigins: allowedOrigins
-}))
-app.all('*', function(req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header('Access-Control-Allow-Methods', 'OPTIONS,GET,POST,PUT,DELETE');
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
-    if ('OPTIONS' == req.method){
-        return res.send(200);
+/*
+var allowCrossDomain = function(req, res, next) {
+
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'accept, content-type,x-requested-with');
+    if ('OPTIONS' === req.method) {
+        res.send(200);
     }
-    next();
-});
+    else {
+        next();
+    }
+};
+app.use(allowCrossDomain);
+*/
+/*
+app.use(cors({
+    allowedOrigins: allowedOrigins
+}))
+*/
+
 
 
 var config = JSON.parse(fs.readFileSync(process.cwd()+'/package.json'));
@@ -83,7 +121,7 @@ var message = 'Backstuff runing version '+config.version+'!';
 console.log(message);
 
 app.get('/', function (req, res) {
-  res.json({messsage:message,support:config.author,allowedOrigins:allowedOrigins});
+  res.json({messsage:message,support:config.author});
 });
 
 configureRoutes(app);
@@ -92,7 +130,6 @@ configureProgrammedTasks(app);
 
 
 var port = process.env.PORT || 5000;
-app.listen(port, function () {
-  console.log('Example app listening on port '+port+'!');
+app.listen(port, function() {
+    console.log('Example app listening on port ' + port + '!');
 });
-

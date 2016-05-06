@@ -51,9 +51,14 @@ exports.create = function(modelName, m) {
     //
     function createUpdate(data, cb, matchData, requiredKeys) {
         //matchData, requiredKeys: req,res (if is being called directly)
-        if(matchData && (matchData.body || matchData.params)){
-            matchData=null;
-            requiredKeys=null;
+        if (matchData && (matchData.body || matchData.params)) {
+            matchData = null;
+            requiredKeys = null;
+        }
+
+        if (data.__match) {
+            matchData = data.__match;
+            delete data.__match;
         }
 
         return promise((then, error, emit) => {
@@ -79,7 +84,8 @@ exports.create = function(modelName, m) {
                         var _matchData = {}
                         matchData.map(key => _matchData[key] = data[key]);
                         matchData = _matchData;
-                    } else {
+                    }
+                    else {
                         matchData = {};
                     }
                 }
@@ -98,7 +104,8 @@ exports.create = function(modelName, m) {
                                 emit('updated', err, r);
                                 return rta(err, r);
                             });
-                        } else {
+                        }
+                        else {
                             log('createUpdate:match:not-found:creating');
                             _create(data, (err, r) => {
                                 if (err) return rta(err, null);
@@ -107,7 +114,8 @@ exports.create = function(modelName, m) {
                             }, requiredKeys);
                         }
                     })
-                } else {
+                }
+                else {
                     log('createUpdate:creating');
                     _create(data, (err, r) => {
                         if (err) return rta(err, null);
@@ -132,7 +140,8 @@ exports.create = function(modelName, m) {
     function populate(query, p) {
         if (p.length) {
             query = query.populate(p[0], p[1]);
-        } else {
+        }
+        else {
             Object.keys(p).forEach((k) => {
                 query = query.populate(k, p[k]);
             });
@@ -149,47 +158,50 @@ exports.create = function(modelName, m) {
         if (data.__populate) {
             query = populate(query, data.__populate);
         }
+        if (data.__sort) {
+            query = query.sort(data.__sort);
+        }
         query.exec(cb);
     }
 
-    function fillObject(object,data,propName,newPropName){
+    function fillObject(object, data, propName, newPropName) {
         var assignable = {};
-        if(data[propName]){
-            assignable[newPropName||propName] = data[propName];
+        if (data[propName]) {
+            assignable[newPropName || propName] = data[propName];
         }
-        return Object.assign(object,assignable);
+        return Object.assign(object, assignable);
     }
 
     function paginate(data, cb) {
         log('paginate=' + JSON.stringify(data));
         var options = {};
-        options = fillObject(options,data,'__select','select');
-        options = fillObject(options,data,'__sort','sort');
-        options = fillObject(options,data,'__lean','lean');
+        options = fillObject(options, data, '__select', 'select');
+        options = fillObject(options, data, '__sort', 'sort');
+        options = fillObject(options, data, '__lean', 'lean');
 
-        if(data.__populate){
+        if (data.__populate) {
             var __populate = data.__populate;
             delete data.__populate;
             var arr = [];
-            for(var x in __populate){
+            for (var x in __populate) {
                 arr.push({
-                    path:x,
-                    select:__populate[x]
+                    path: x,
+                    select: __populate[x]
                 });
             }
             options.populate = arr;
         }
 
-        options = fillObject(options,data,'__populate','populate');
-        options = fillObject(options,data,'__offset','offset');
-        options = fillObject(options,data,'__page','page');
-        options = fillObject(options,data,'__limit','limit');
+        options = fillObject(options, data, '__populate', 'populate');
+        options = fillObject(options, data, '__offset', 'offset');
+        options = fillObject(options, data, '__page', 'page');
+        options = fillObject(options, data, '__limit', 'limit');
         //log('paginate:options:typeof:' + (typeof options));
         log('paginate:options=' + JSON.stringify(options));
         Model.paginate(toRules(data), options, function(err, result) {
-            if(err) cb(err,result);
+            if (err) return cb(err, result);
             //log('paginate:result=' + JSON.stringify(result));
-            cb(null,result);
+            return cb(null, result);
             /*
             docs {Array} - Array of documents
             total {Number} - Total number of documents in collection that match a query
@@ -231,7 +243,8 @@ exports.create = function(modelName, m) {
             log('result=', JSON.stringify(rta));
             if (options && options.__res) {
                 options.__res(res, rta);
-            } else {
+            }
+            else {
                 res.json(rta);
             }
         };
@@ -282,27 +295,34 @@ exports.create = function(modelName, m) {
         });
     }
 
-
+    function removeWhen(data, cb) {
+        log('removeWhen=' + JSON.stringify(data));
+        Model.remove(toRules(data), (err, r) => {
+            if (err) return cb(err, r);
+            cb(err, r);
+        });
+    }
 
     function removeAll(data, cb, requiredKeys) {
         log('removeAll=' + JSON.stringify(data));
         //check(data, ['ids'], (err, r) => {
-        check(data, requiredKeys || [], (err, r) => {
-            if (err) {
-                cb(err, null);
-            } else {
-                data = data || {};
-                var rules = data.ids ? {
-                    _id: {
-                        $all: data.ids
-                    }
-                } : {};
-                Model.remove(rules, (err, r) => {
-                    if (err) return cb(err, r);
-                    cb(err, r);
-                });
-            }
+        check(data, requiredKeys || ['ids'], (err, r) => {
+            if (err) return cb(err, null);
+            _removeIds();
         });
+
+        function _removeIds() {
+            data = data || {};
+            var rules = data.ids ? {
+                _id: {
+                    $all: data.ids
+                }
+            } : {};
+            Model.remove(rules, (err, r) => {
+                if (err) return cb(err, r);
+                cb(err, r);
+            });
+        }
     }
 
     function toRules(data) {
@@ -312,7 +332,9 @@ exports.create = function(modelName, m) {
             if (x.indexOf('__') !== -1) {
                 if (x == '__$where') {
                     for (var k in data[x]) {
-                        rules[k] = { $where: data[x][k] };
+                        rules[k] = {
+                            $where: data[x][k]
+                        };
                     }
                 }
                 if (x == '__regexp') {
@@ -321,7 +343,8 @@ exports.create = function(modelName, m) {
                         log('toRules:exp' + data[x][k]);
                     }
                 }
-            } else {
+            }
+            else {
                 rules[x] = {
                     $eq: data[x]
                 };
@@ -367,7 +390,7 @@ exports.create = function(modelName, m) {
 
     return {
         model: Model,
-        paginate:paginate,
+        paginate: paginate,
         existsById: existsById,
         existsByField: existsByField,
         exists: exists,
@@ -377,6 +400,7 @@ exports.create = function(modelName, m) {
         getAll: getAll,
         update: update,
         remove: remove,
+        removeWhen: removeWhen,
         result: result,
         get: get,
         getById: getById,

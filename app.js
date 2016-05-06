@@ -5,6 +5,7 @@ var bb = require('express-busboy');
 var busboy = require('connect-busboy');
 var path    = require("path");
 var inspect = require('util').inspect;
+var fs = require('fs');
 
 require('./helpers/db');
 var configureRoutes = require('./helpers/handle.routes').configure;
@@ -56,7 +57,9 @@ var LOCAL = process.env.LOCAL && process.env.LOCAL.toString() == '1' || false;
 var allowedOrigins = [];
 
 if(LOCAL){
-    allowedOrigins.push('*','*localhost:*','*localhost');
+    allowedOrigins.push('*','*localhost:*','*localhost','https://blooming-refuge-27843.herokuapp.com');
+}else{
+    allowedOrigins.push('*','*localhost:*','*localhost','https://blooming-refuge-27843.herokuapp.com');
 }
 
 console.log('Using allowedOrigins:',allowedOrigins);
@@ -74,8 +77,13 @@ app.all('*', function(req, res, next) {
     next();
 });
 
+
+var config = JSON.parse(fs.readFileSync(process.cwd()+'/package.json'));
+var message = 'Backstuff runing version '+config.version+'!';
+console.log(message);
+
 app.get('/', function (req, res) {
-  res.json({messsage:'Hello World!'});
+  res.json({messsage:message,support:config.author,allowedOrigins:allowedOrigins});
 });
 
 configureRoutes(app);

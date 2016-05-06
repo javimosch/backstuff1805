@@ -48,7 +48,8 @@ function dummy(cb) {
     };
     if (cb) {
         cb(null, rta);
-    } else {
+    }
+    else {
         actions.log('INFO=' + JSON.stringify(rta));
     }
 }
@@ -68,13 +69,16 @@ function send(opt, resCb) {
     };
     if (opt._user) {
         if (opt._notification) {
-            Notification.getById({ _id: opt._notification }, (err, _notification) => {
+            Notification.getById({
+                _id: opt._notification
+            }, (err, _notification) => {
                 if (err) {
                     return dblog('notification getById fail in function send');
                 }
                 validateSending(_notification);
             });
-        } else {
+        }
+        else {
             saveNotification(opt._user, data, (_notification) => {
                 if (_notification) {
                     _notification.__populate = {
@@ -91,7 +95,7 @@ function send(opt, resCb) {
                     return dblog('notification getById fail in function send');
                 }
                 if (!_.includes(_notification._config.disabledTypes, _notification.type)) {
-                    
+
                     if (process.env.disableMailing === '1') {
                         _notification.sended = true;
                         Notification.update(_notification, (err, _notification) => {
@@ -106,7 +110,8 @@ function send(opt, resCb) {
                     }
 
                     _send(_notification);
-                } else {
+                }
+                else {
                     if (resCb) {
                         resCb('SENDING_DISABLED_TYPE', "");
                     }
@@ -114,7 +119,8 @@ function send(opt, resCb) {
             });
         }
 
-    } else {
+    }
+    else {
         if (process.env.disableMailing === '1') return dummy(opt.cb);
         _send();
     }
@@ -137,7 +143,8 @@ function send(opt, resCb) {
                 if (opt.cb) {
                     opt.cb(err, r);
                 }
-            } else {
+            }
+            else {
                 dblog('sendEmail fail, the data was ' + JSON.stringify(data));
             }
         });
@@ -146,6 +153,46 @@ function send(opt, resCb) {
 
 function time(d) {
     return moment(d).format('HH:mm');
+}
+
+function contactFormSendToAllAdmins(data, cb) {
+    actions.log('contactFormSendToAllAdmins=' + JSON.stringify(data));
+    cb(null, "Send in progress"); //async op
+    User.getAll({
+        userType: 'admin'
+    }, function(err, admins) {
+        if (err) {
+            return dblog('contactFormSendToAllAdmins fail when retrieve admins. Details: ' + JSON.stringify(err));
+        }
+        admins.forEach(admin => {
+            var _data = _.cloneDeep(data);
+            _data._user = admin;
+            contactForm(_data, function() {
+                //no-log 
+            });
+        });
+    });
+}
+
+
+function contactForm(data, cb) {
+    actions.log('contactForm=' + JSON.stringify(data));
+    //data = {_admin,_diag,}
+    //vars: ADMIN_NAME DIAG_NAME DIAG_DIPLOME_FILENAME DIAG_EDIT_URL
+    send({
+        _user: data._user,
+        to: data._user.email,
+        subject: "Site contact form: new message",
+        templateName: 'contact-form',
+        templateReplace: {
+            '$USER_NAME': data._user.firstName || data._user.email,
+            '$CLIENT_NAME': data.fullname,
+            '$CLIENT_EMAIL': data.email,
+            '$CLIENT_PHONE': data.phone,
+            '$CLIENT_MESSAGE': data.message
+        },
+        cb: () => {}
+    }, cb);
 }
 
 function diplomeExpiration(data, cb) {
@@ -199,7 +246,8 @@ function orderPaymentLink(_order, cb) {
             actions.log('orderPaymentLink:fetching-order');
             Order.getById(_order, _send);
         });
-    } else {
+    }
+    else {
         _send(null, _order);
     }
 
@@ -300,7 +348,10 @@ function adminNewAccount(_user, cb) {
 }
 
 function dblog(msg, type) {
-    Log.save({ message: msg, type: type });
+    Log.save({
+        message: msg,
+        type: type
+    });
 }
 
 function saveNotification(_user, data, cb) {
@@ -310,17 +361,20 @@ function saveNotification(_user, data, cb) {
     }
 
     //data: html,from,to,subject
-    UserNotifications.getById(_user, (err, _config) => {
+    UserNotifications.get({
+        _user:_user
+    }, (err, _config) => {
         if (err) return dblog('UserNotifications getById fail for user ' + _user.email);
         if (!_config) {
-            dblog("No existe UserNotifications para" + _user.email + ', creando uno.', 'info');
+            //dblog("UserNotifications not found for " + _user.email + '.', 'info');
             UserNotifications.create({
                 _user: _user._id
             }, (err, _config) => {
                 if (err) return dblog('UserNotifications create fail for user ' + _user.email);
                 saveNotificationOn(_config);
             })
-        } else {
+        }
+        else {
             saveNotificationOn(_config);
         }
     });
@@ -336,6 +390,9 @@ function saveNotification(_user, data, cb) {
         }, (err, _notification) => {
             if (err) return dblog('saveNotification fail when creating a notification for user ' + _user.email);
             if (cb) cb(_notification);
+            
+            _config.notifications.push(_notification);
+            _config.save();
         });
     }
 }
@@ -364,7 +421,8 @@ function handleNewAccount(_user, err, r) {
         _user.save((err, r) => {
             if (!err) actions.log(_user.email + ' passwordSended=true');
         });
-    } else {
+    }
+    else {
         actions.log(_user.email + ' new account email sended failed');
         actions.log(JSON.stringify(err));
     }
@@ -387,6 +445,8 @@ function passwordReset(_user, cb) {
 }
 
 exports.actions = {
+    contactFormSendToAllAdmins:contactFormSendToAllAdmins,
+    contactForm: contactForm,
     diplomeExpiration: diplomeExpiration,
     clientNewAccount: clientNewAccount,
     diagNewAccount: diagNewAccount,

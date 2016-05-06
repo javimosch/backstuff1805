@@ -25,14 +25,21 @@ function associatedOrder(data, cb) {
     //data.source
     if (data.source.indexOf('ch') !== -1) {
         _charge(data.source);
-    } else {
+    }
+    else {
         stripe.refunds.retrieve(
             data.source,
             function(err, refund) {
-                if(refund.charge){
-                    _charge(refund.charge);    
+                if (err) return cb(err, null);
+                if (refund) {
+                    if (refund.charge) {
+                        _charge(refund.charge);
+                    }
+                    else {
+                        cb('Refund do not have a charge related.', refund);
+                    }
                 }else{
-                    cb('Refund do not have a charge related.',refund);
+                        cb('Refund not found.', refund);
                 }
             }
         );
@@ -97,10 +104,11 @@ function diagBalance(data, cb) {
                     return c.amount;
                 });
                 cb(null, {
-                    balance:balance,
-                    email:_user.email
+                    balance: balance,
+                    email: _user.email
                 });
-            } else {
+            }
+            else {
                 cb("_user not found with " + data._diag);
             }
         });
@@ -132,12 +140,12 @@ function listUncaptured(data, cb) {
 function listCustomerCharges(data, cb) {
     actions.log('listCustomerCharges=' + JSON.stringify(data));
     if (!data.stripeCustomer) return cb("listCustomerCharges: stripeCustomer required.", null);
-    stripe.charges.list({ customer: data.stripeCustomer },
-        (err, charges) => {
-            if (err) return cb(err, null);
-            cb(null, charges);
-        }
-    );
+    stripe.charges.list({
+        customer: data.stripeCustomer
+    }, (err, charges) => {
+        if (err) return cb(err, null);
+        cb(null, charges);
+    });
 }
 
 function createCustomer(_user, cb) {
@@ -179,7 +187,8 @@ function payOrder(_order, cb) {
         if (err && err.type === 'StripeCardError') {
             // The card has been declined
             cb(err, null);
-        } else {
+        }
+        else {
             actions.log('payOrder:rta=' + JSON.stringify(charge));
 
             captureOrderCharge(charge); //async

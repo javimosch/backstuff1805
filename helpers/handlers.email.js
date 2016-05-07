@@ -1,14 +1,22 @@
 //var Order = mongoose.model('Order');
 //var User = mongoose.model('User');
+
+var NotificationHandler     = require('../actions/notification.actions').actions;
+var NOTIFICATION                   = require('../actions/notification.actions').NOTIFICATION;
+
+//console.log('HANDLERS.EMAIL',JSON.stringify(Object.keys(NotificationHandler)));
+
+
 var Order = require('./handler.actions').create('Order');
 var User = require('./handler.actions').create('User');
 var Log = require('./handler.actions').create('Log');
 var UserNotifications = require('./handler.actions').create('UserNotifications');
 var Notification = require('./handler.actions').create('Notification');
-var getFile = require('./utils').getFile;
+var template = require('../utils/template');
 var sendEmail = require('./utils.mailing').sendEmail;
 var moment = require('moment');
-var S = require('string');
+
+
 var btoa = require('btoa')
 var _ = require('lodash');
 
@@ -21,40 +29,40 @@ var actions = {
     }
 };
 
+exports.actions = {
+    NEW_CONTACT_FORM_MESSAGE: NEW_CONTACT_FORM_MESSAGE,
+    NEW_CONTACT_FORM_MESSAGE: NEW_CONTACT_FORM_MESSAGE,
+    DIPLOME_EXPIRATION: DIPLOME_EXPIRATION,
+    CLIENT_NEW_ACCOUNT: CLIENT_NEW_ACCOUNT,
+    DIAG_NEW_ACCOUNT: DIAG_NEW_ACCOUNT,
+    ADMIN_NEW_ACCOUNT: ADMIN_NEW_ACCOUNT,
+    ORDER_CREATED: ORDER_CREATED,
+    PASSWORD_RESET: PASSWORD_RESET,
+    ORDER_PAYMENT_SUCCESS: ORDER_PAYMENT_SUCCESS,
+    PAYMENT_LINK: PAYMENT_LINK,
+    ORDER_CONFIRMED_FOR_INVOICE_END_OF_THE_MONTH: ORDER_CONFIRMED_FOR_INVOICE_END_OF_THE_MONTH,
+    send: send, //calling this function directly is deprecated.
+};
 
 
-function replace(html, params) {
-    html = S(html);
-    for (var x in params) {
-        //console.log('EMAIL:REPLACE:'+x+':'+params[x]);
-        html = html.replaceAll(x, params[x]);
-    }
-    return html.s;
-}
 
-function template(n, replaceParams) {
-    var html = getFile('../templates/' + n + '.html');
-    if (replaceParams) {
-        html = replace(html, replaceParams);
-        //console.log('EMAIL:REPLACE:',html);
-    }
-    return html;
-}
 
-function dummy(cb) {
+function dummySuccessResponse(cb) {
+    actions.log('dummySuccessResponse:cb=' + JSON.stringify(cb));
     var rta = {
         ok: true,
-        message: 'Mailing disabled'
+        message: 'Success (Mailing disabled)'
     };
     if (cb) {
         cb(null, rta);
     }
     else {
-        actions.log('INFO=' + JSON.stringify(rta));
+        actions.log('dummySuccessResponse:rta:(no-cb)=' + JSON.stringify(rta));
     }
 }
 
 function send(opt, resCb) {
+    actions.log('send:start=' + JSON.stringify(opt));
     var html = opt.html || template(opt.templateName, opt.templateReplace);
     if (opt.subject) {
         if (opt.subject.indexOf('Diag Project') == -1) {
@@ -62,6 +70,7 @@ function send(opt, resCb) {
         }
     }
     var data = {
+        type: opt.__notificationType,
         html: html,
         from: process.env.emailFrom || 'diags-project@startup.com',
         to: opt.to || process.env.emailTo || 'arancibiajav@gmail.com',
@@ -69,6 +78,7 @@ function send(opt, resCb) {
     };
     if (opt._user) {
         if (opt._notification) {
+            actions.log('send:using-_notification=' + JSON.stringify(opt._notification));
             Notification.getById({
                 _id: opt._notification
             }, (err, _notification) => {
@@ -79,17 +89,21 @@ function send(opt, resCb) {
             });
         }
         else {
-            saveNotification(opt._user, data, (_notification) => {
+            actions.log('send:saving-notification');
+            data._user = opt._user;
+            NotificationHandler.save(data, (_notification) => {
                 if (_notification) {
                     _notification.__populate = {
                         _config: 'disabledTypes'
                     }
+                    actions.log('send:using-_notification=' + JSON.stringify(_notification));
                     validateSending(_notification);
                 }
             });
         }
 
         function validateSending(_notification) {
+            actions.log('send:validateSending=' + JSON.stringify(_notification));
             Notification.getById(_notification, (err, _notification) => {
                 if (err) {
                     return dblog('notification getById fail in function send');
@@ -97,21 +111,34 @@ function send(opt, resCb) {
                 if (!_.includes(_notification._config.disabledTypes, _notification.type)) {
 
                     if (process.env.disableMailing === '1') {
+                        actions.log('send:mailing-disabled');
                         _notification.sended = true;
                         Notification.update(_notification, (err, _notification) => {
                             if (err) dblog('notification sended update fail in function send.');
 
                             if (resCb) resCb(null, {
-                                message: 'Sended'
+                                message: 'Success (Mailing disabled)',
+                                ok: true
                             });
 
                         });
-                        return dummy(opt.cb);
+                        return dummySuccessResponse(opt.cb);
+                    }
+                    else {
+                        _send(_notification);
                     }
 
-                    _send(_notification);
+
                 }
                 else {
+
+                    if (opt.cb) {
+                        return opt.cb(null, {
+                            ok: true,
+                            message: 'Notification type disabled'
+                        })
+                    }
+
                     if (resCb) {
                         resCb('SENDING_DISABLED_TYPE', "");
                     }
@@ -121,30 +148,28 @@ function send(opt, resCb) {
 
     }
     else {
-        if (process.env.disableMailing === '1') return dummy(opt.cb);
+        if (process.env.disableMailing === '1') return dummySuccessResponse(opt.cb);
         _send();
     }
 
     function _send(_notification) {
+        actions.log('send:real-sending');
         sendEmail(data, (err, r) => {
-            if (!err) {
+            actions.log('send:real-sending:rta: ' + JSON.stringify(r));
 
-                if (_notification) {
-                    _notification.sended = true;
-                    Notification.update(_notification, (err, _notification) => {
-                        if (err) dblog('notification sended update fail in function send.');
+            if (!err && _notification) {
+                _notification.sended = true;
+                Notification.update(_notification, (err, _notification) => {
+                    if (err) dblog('notification sended update fail in function send.');
 
-                        if (resCb) resCb(null, {
-                            message: 'Sended'
-                        });
+                    if (resCb) resCb(null, r);
 
-                    });
-                }
-                if (opt.cb) {
-                    opt.cb(err, r);
-                }
+                });
             }
-            else {
+            if (opt.cb) {
+                opt.cb(err, r);
+            }
+            if (err) {
                 dblog('sendEmail fail, the data was ' + JSON.stringify(data));
             }
         });
@@ -155,19 +180,19 @@ function time(d) {
     return moment(d).format('HH:mm');
 }
 
-function contactFormSendToAllAdmins(data, cb) {
-    actions.log('contactFormSendToAllAdmins=' + JSON.stringify(data));
+function NEW_CONTACT_FORM_MESSAGE(data, cb) {
+    actions.log('NEW_CONTACT_FORM_MESSAGE=' + JSON.stringify(data));
     cb(null, "Send in progress"); //async op
     User.getAll({
         userType: 'admin'
     }, function(err, admins) {
         if (err) {
-            return dblog('contactFormSendToAllAdmins fail when retrieve admins. Details: ' + JSON.stringify(err));
+            return dblog('NEW_CONTACT_FORM_MESSAGE fail when retrieve admins. Details: ' + JSON.stringify(err));
         }
         admins.forEach(admin => {
             var _data = _.cloneDeep(data);
             _data._user = admin;
-            contactForm(_data, function() {
+            NEW_CONTACT_FORM_MESSAGE_SINGLE(_data, function() {
                 //no-log 
             });
         });
@@ -175,11 +200,12 @@ function contactFormSendToAllAdmins(data, cb) {
 }
 
 
-function contactForm(data, cb) {
-    actions.log('contactForm=' + JSON.stringify(data));
+function NEW_CONTACT_FORM_MESSAGE_SINGLE(data, cb) {
+    actions.log('NEW_CONTACT_FORM_MESSAGE_SINGLE=' + JSON.stringify(data));
     //data = {_admin,_diag,}
     //vars: ADMIN_NAME DIAG_NAME DIAG_DIPLOME_FILENAME DIAG_EDIT_URL
     send({
+        __notificationType: data.__notificationType,
         _user: data._user,
         to: data._user.email,
         subject: "Site contact form: new message",
@@ -195,11 +221,12 @@ function contactForm(data, cb) {
     }, cb);
 }
 
-function diplomeExpiration(data, cb) {
-    actions.log('diplomeExpiration=' + JSON.stringify(data));
+function DIPLOME_EXPIRATION(data, cb) {
+    actions.log('DIPLOME_EXPIRATION=' + JSON.stringify(data));
     //data = {_admin,_diag,}
     //vars: ADMIN_NAME DIAG_NAME DIAG_DIPLOME_FILENAME DIAG_EDIT_URL
     send({
+        __notificationType: data.__notificationType,
         _user: data._admin,
         to: data._admin.email,
         subject: "Diag diplome expiration",
@@ -214,10 +241,12 @@ function diplomeExpiration(data, cb) {
     }, cb);
 }
 
-function newOrder(_user, _order, cb) {
-    actions.log('newOrder=' + JSON.stringify(_user));
-
+function ORDER_CREATED(data, cb) {
+    actions.log('ORDER_CREATED=' + JSON.stringify(_user));
+    var _user = data._user;
+    var _order = data._order;
     send({
+        __notificationType: data.__notificationType,
         _user: _user,
         to: _user.email,
         subject: "New Order",
@@ -234,16 +263,17 @@ function newOrder(_user, _order, cb) {
 }
 
 //Email from Agency to Landlord
-function orderPaymentLink(_order, cb) {
-    actions.log('orderPaymentLink=' + JSON.stringify(_order));
+function PAYMENT_LINK(data, cb) {
+    var _order = data;
+    actions.log('PAYMENT_LINK=' + JSON.stringify(_order));
     if (typeof _order._client === 'string') {
         if (_order._id) return cb("_id required");
-        actions.log('orderPaymentLink:updating-order');
+        actions.log('PAYMENT_LINK:updating-order');
         return Order.update(_order, () => {
             _order.__populate = {
                 _client: 'email firstName lastName'
             };
-            actions.log('orderPaymentLink:fetching-order');
+            actions.log('PAYMENT_LINK:fetching-order');
             Order.getById(_order, _send);
         });
     }
@@ -253,8 +283,9 @@ function orderPaymentLink(_order, cb) {
 
     function _send(err, _order) {
         if (err) return cb(err, _order);
-        actions.log('orderPaymentLink:sending..');
+        actions.log('PAYMENT_LINK:sending..');
         send({
+            __notificationType: data.__notificationType,
             _user: _order._client,
             to: _order.landLordEmail,
             subject: "Payment delegation notification",
@@ -267,20 +298,23 @@ function orderPaymentLink(_order, cb) {
                 '$ORDER_PAY_LINK': adminUrl('/orders/view/' + _order._id)
             },
             cb: (err, r) => {
-                actions.log('orderPaymentLink:sended!');
+                actions.log('PAYMENT_LINK:sended!');
                 return cb(err, r);
             }
         });
     }
 }
 
-function orderConfirmedForInvoiceEndOfTheMonth(_user, _order, cb) {
-    actions.log('orderConfirmedForInvoiceEndOfTheMonth=' + JSON.stringify({
+function ORDER_CONFIRMED_FOR_INVOICE_END_OF_THE_MONTH(data, cb) {
+    var _user = data._user;
+    var _order = data._order;
+    actions.log('ORDER_CONFIRMED_FOR_INVOICE_END_OF_THE_MONTH=' + JSON.stringify({
         email: _user.email,
         _order: _order._id,
         price: _order.price
     }));
     send({
+        __notificationType: NOTIFICATION.ORDER_CONFIRMED_FOR_INVOICE_END_OF_THE_MONTH,
         _user: _user,
         to: _user.email,
         subject: "Order For 'end of the month invoicing' confirmed",
@@ -294,13 +328,16 @@ function orderConfirmedForInvoiceEndOfTheMonth(_user, _order, cb) {
     });
 }
 
-function orderPaymentSuccess(_user, _order, cb) {
-    actions.log('orderPaymentSuccess=' + JSON.stringify({
+function ORDER_PAYMENT_SUCCESS(data, cb) {
+    var _user = data._user;
+    var _order = data._order;
+    actions.log('ORDER_PAYMENT_SUCCESS=' + JSON.stringify({
         email: _user.email,
         _order: _order._id,
         price: _order.price
     }));
     send({
+        __notificationType: NOTIFICATION.ORDER_PAYMENT_SUCCESS,
         _user: _user,
         to: _user.email,
         subject: "Order Payment Notification",
@@ -315,9 +352,11 @@ function orderPaymentSuccess(_user, _order, cb) {
 }
 
 
-function diagNewAccount(_user, cb) {
-    actions.log('diagNewAccount=' + JSON.stringify(_user));
+function DIAG_NEW_ACCOUNT(data, cb) {
+    var _user = data;
+    actions.log('DIAG_NEW_ACCOUNT=' + JSON.stringify(_user));
     send({
+        __notificationType: NOTIFICATION.DIAG_NEW_ACCOUNT,
         _user: _user,
         to: _user.email,
         subject: "New Diag Account",
@@ -331,9 +370,11 @@ function diagNewAccount(_user, cb) {
     });
 }
 
-function adminNewAccount(_user, cb) {
-    actions.log('adminNewAccount=' + JSON.stringify(_user));
+function ADMIN_NEW_ACCOUNT(data, cb) {
+    var _user = data;
+    actions.log('ADMIN_NEW_ACCOUNT=' + JSON.stringify(_user));
     send({
+        __notificationType: NOTIFICATION.ADMIN_NEW_ACCOUNT,
         _user: _user,
         to: _user.email,
         subject: "Your Admin Account is ready",
@@ -354,52 +395,14 @@ function dblog(msg, type) {
     });
 }
 
-function saveNotification(_user, data, cb) {
 
-    if (!_user || !_user._id) {
-        return dblog('saveNotification fail because _user is undefined.');
-    }
 
-    //data: html,from,to,subject
-    UserNotifications.get({
-        _user:_user
-    }, (err, _config) => {
-        if (err) return dblog('UserNotifications getById fail for user ' + _user.email);
-        if (!_config) {
-            //dblog("UserNotifications not found for " + _user.email + '.', 'info');
-            UserNotifications.create({
-                _user: _user._id
-            }, (err, _config) => {
-                if (err) return dblog('UserNotifications create fail for user ' + _user.email);
-                saveNotificationOn(_config);
-            })
-        }
-        else {
-            saveNotificationOn(_config);
-        }
-    });
-
-    function saveNotificationOn(_config) {
-        Notification.create({
-            _config: _config,
-            _user: _user._id,
-            type: data.type || 'no-type',
-            to: data.to || 'not-specified',
-            subject: data.subject || 'not specified',
-            contents: data.html || ''
-        }, (err, _notification) => {
-            if (err) return dblog('saveNotification fail when creating a notification for user ' + _user.email);
-            if (cb) cb(_notification);
-            
-            _config.notifications.push(_notification);
-            _config.save();
-        });
-    }
-}
-
-function clientNewAccount(_user, cb) {
-    actions.log('clientNewAccount=' + JSON.stringify(_user));
+function CLIENT_NEW_ACCOUNT(data, cb) {
+    var _user = data;
+    actions.log('CLIENT_NEW_ACCOUNT=' + JSON.stringify(_user));
+    actions.log('CLIENT_NEW_ACCOUNT:NOTIFICATION=' + JSON.stringify(NOTIFICATION));
     send({
+        __notificationType: NOTIFICATION.CLIENT_NEW_ACCOUNT,
         _user: _user,
         to: _user.email,
         subject: "New Client Account",
@@ -413,24 +416,13 @@ function clientNewAccount(_user, cb) {
     });
 }
 
-function handleNewAccount(_user, err, r) {
-    //async (write log on error)
-    if (r.ok) {
-        actions.log(_user.email + ' new account email sended' + JSON.stringify(r));
-        _user.passwordSended = true;
-        _user.save((err, r) => {
-            if (!err) actions.log(_user.email + ' passwordSended=true');
-        });
-    }
-    else {
-        actions.log(_user.email + ' new account email sended failed');
-        actions.log(JSON.stringify(err));
-    }
-}
 
-function passwordReset(_user, cb) {
-    actions.log('handlePasswordReset=' + JSON.stringify(_user));
+
+function PASSWORD_RESET(data, cb) {
+    var _user = data;
+    actions.log('PASSWORD_RESET=' + JSON.stringify(_user));
     send({
+        __notificationType: NOTIFICATION.PASSWORD_RESET,
         _user: _user,
         to: _user.email,
         subject: "Password reset",
@@ -443,18 +435,3 @@ function passwordReset(_user, cb) {
         cb: cb
     });
 }
-
-exports.actions = {
-    contactFormSendToAllAdmins:contactFormSendToAllAdmins,
-    contactForm: contactForm,
-    diplomeExpiration: diplomeExpiration,
-    clientNewAccount: clientNewAccount,
-    diagNewAccount: diagNewAccount,
-    adminNewAccount: adminNewAccount,
-    handleNewAccount: handleNewAccount,
-    newOrder: newOrder,
-    send: send,
-    passwordReset: passwordReset,
-    orderPaymentSuccess: orderPaymentSuccess,
-    orderPaymentLink: orderPaymentLink
-};

@@ -1,88 +1,22 @@
-var mongoose = require('./db').mongoose;
-var user = require('./handlers.user');
-var order = require('./handlers.order');
-var payment = require('./stripeService');
-var stats = require('./handle.stats');
-var fileActions = require('./db.gridfs').actions;
-var emailActions = require('./handlers.email').actions;
-var textActions = require('../actions/text.actions').actions;
-var stripeActions = require('../actions/stripe.actions').actions;
-
-
-var _ = require('lodash');
-//var path = require("path");
-//var request = require('request');
-//var configureTemplateRoutes = require('../templates/templates').configure;
+var mongoose            = require('./db').mongoose;
+var userActions         = require('./handlers.user').actions;
+var orderActions        = require('./handlers.order').actions;
+var paymentActions      = require('./stripeService').actions;
+var statsActions        = require('./handle.stats').actions;
+var fileActions         = require('./db.gridfs').actions;
+var emailActions        = require('./handlers.email').actions;
+var textActions         = require('../actions/text.actions').actions;
+var stripeActions       = require('../actions/stripe.actions').actions;
+var notificationActions = require('../actions/notification.actions').actions;
+var NOTIFICATION        = require('../actions/notification.actions').NOTIFICATION;
+var _                   = require('lodash');
 var createController = require('./handler.actions').create;
-
+//
 exports.configure = function(app) {
-
-    //    configureTemplateRoutes(app);
-
-    /*
-        app.get('/html/email', (req, res) => {
-            var html = getFile('../templates/email.html');
-            res.json({html:html});
-        });
-    */
-
-    app.get('/email/test', (req, res) => {
-        var html = getFile('../templates/email.html');
-        html = S(html).replaceAll('$PASSWORD', 123)
-            .replaceAll('$URL', process.env.adminURL || 'http://localhost:3000/admin')
-            .s;
-        res.json({ r: html });
-        return;
-        var data = {
-            html: html,
-            from: 'admin@diags.com',
-            to: 'arancibiajav@gmail.com',
-            subject: 'Your order is created #2'
-        };
-
-        sendEmail(data, (r) => {
-            res.json(r);
-        })
-
-    });
-
-
-
-
-    user.routes(app);
-    order.routes(app);
-
-
-    app.get('/ctrl/:controller/:action', function(req, res) {
-        var controller = req.params.controller;
-        var action = req.params.action;
-        var data = req.params;
-        var actions = createController(controller);
-        if (controller == 'User') {
-            Object.assign(actions, user.actions);
-        }
-        if (controller == 'Order') {
-            Object.assign(actions, order.actions);
-        }
-        if (controller == 'File') {
-            Object.assign(actions, fileActions);
-        }
-
-        data.__req = req;
-        actions[action](data, actions.result(res, data));
-    });
-
     app.post('/ctrl/:controller/:action', function(req, res) {
         var controller = req.params.controller;
         var action = req.params.action;
         var data = req.body;
-
-        //if(req.get('content-type').indexOf('multipart/form-data') !== -1){
-          //  console.log('ctrl.post:type (FORM)'+req.get('content-type'));
-            ///data = Object.assign(data||{},req.form||{});
-        //}else{
-          //  console.log('ctrl.post:type '+req.get('content-type'));
-        //}
 
         var actions = {};
 
@@ -91,16 +25,16 @@ exports.configure = function(app) {
         //}
 
         if (controller == 'User') {
-            Object.assign(actions, user.actions);
+            Object.assign(actions, userActions);
         }
         if (controller == 'Order') {
-            Object.assign(actions, order.actions);
+            Object.assign(actions, orderActions);
         }
         if (controller == 'Payment') {
-            Object.assign(actions, payment.actions);
+            Object.assign(actions, paymentActions);
         }
         if (controller == 'Stats') {
-            Object.assign(actions, stats.actions);
+            Object.assign(actions, statsActions);
         }
 
         if (controller == 'File') {
@@ -116,11 +50,12 @@ exports.configure = function(app) {
         }
 
         if (controller == 'Stripe') {
-            Object.assign(actions, stripeActions);
+            Object.assign(actions, notificationActions);
         }
         
-        
-
+        if (controller == 'Notification') {
+            Object.assign(actions, stripeActions);
+        }
 
         if(actions[action]){
             actions[action](data, actions.result(res),req,res);
@@ -138,7 +73,7 @@ exports.configure = function(app) {
     });
 
     app.get('/File/get/:_id', (req, res) => {
-        fileActions.get({ _id: req.params._id }, (err, data) => {
+        fileActions.get({ _id: req.params._id }, (_err, data) => {
             res.setHeader('Content-disposition', 'attachment; filename=' + data.filename);
             //res.setHeader('Content-Type', data.contentType );
             res.setHeader('Content-Type', 'application/pdf');
@@ -147,17 +82,6 @@ exports.configure = function(app) {
         });
     });
 
-    app.post('/custom', function(req, res) {
-        var d = req.body;
-        mongoose.model(d.model)[d.action](d.data, function(err, result) {
-            res.json({
-                ok: !err,
-                message: err || 'Everithing ok',
-                result: result
-            });
-        });
-    });
-
-
-    console.log('routes-loaded');
+   
+    console.log('ROUTING-OK');
 };

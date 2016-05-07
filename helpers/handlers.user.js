@@ -1,18 +1,19 @@
 var mongoose = require('./db').mongoose;
 var generatePassword = require("password-maker");
-var User = mongoose.model('User');
+//var User = mongoose.model('User');
 var promise = require('./utils').promise;
 var validate = require('./validator').validate;
 var handleMissingKeys = require('./validator').handleMissingKeys;
 var actions = require('./handler.actions').create('User');
+var Log = require('./handler.actions').create('Log');
 var Order = require('./handler.actions').create('Order');
 var Balance = require('./handler.actions').create('Balance');
 var BalanceItem = require('./handler.actions').create('BalanceItem');
-var email = require('./handlers.email').actions;
+//var email = require('./handlers.email').actions;
 var _ = require('lodash');
 var moment = require('moment');
-
-
+var Notif = require('../actions/notification.actions').actions;
+var NOTIFICATION = require('../actions/notification.actions').NOTIFICATION;
 //User.methods.name = ()=>{return };
 
 function balance(data, cb) {
@@ -22,12 +23,13 @@ function balance(data, cb) {
     if (!data._id) return cb("_id required");
     if (data._calculate) {
         _calculate(null, null, true);
-    } else {
+    }
+    else {
         _retrieve();
     }
 
     //
-    function _calculate(err, _user, firstTime) {
+    function _calculate(_err, _user, firstTime) {
         if (!_user && firstTime == true) return actions.model.findById(data._id, _calculate);
         if (!_user) return cb("balance:calculate=User not found:" + data._id);
         //
@@ -41,7 +43,10 @@ function balance(data, cb) {
         var balanceItemKeys = ['_user', '_order', 'pending', 'amount', 'description'];
         var balanceItemMatch = ['_user', '_order'];
         //
-        Balance.createUpdate({ _user: _user._id, amount: 0 }, (err, bal) => {
+        Balance.createUpdate({
+            _user: _user._id,
+            amount: 0
+        }, (err, bal) => {
             if (err) return cb(err);
             actions.log('balance:_calculate:creteUpdate:rta', JSON.stringify(bal));
             BalanceItem.removeAll({
@@ -67,11 +72,12 @@ function balance(data, cb) {
 
                 if (!_orders || _orders.length == 0) {
                     _balance.amount = 0;
-                    _balance.save((err, r) => {
+                    _balance.save((_err, r) => {
                         _retrieve();
                     });
-                } else {
-                    balanceAmount = 0;
+                }
+                else {
+                    var balanceAmount = 0;
                     var _stackSaving = [];
                     var exit = false;
                     _orders.forEach(_order => {
@@ -93,11 +99,11 @@ function balance(data, cb) {
                         //-_order.fastDiagComm (+)
                         if (_user.userType == 'diag') {
                             var diagWebsiteComission = ((_order.price * _user.comission) / 100) * -1;
-                            
+
                             d.amount = _order.price + diagWebsiteComission;
 
                             var fastDiagComm = (d.amount * _order.fastDiagComm) / 100;
-                            d.amount+= fastDiagComm;
+                            d.amount += fastDiagComm;
                         }
                         //admin
                         //-diag price (-)
@@ -114,15 +120,15 @@ function balance(data, cb) {
                         d._user = _user._id;
                         //
                         balanceAmount += d.amount;
-                        BalanceItem.createUpdate(d, (err, _balanceItem) => {
+                        BalanceItem.createUpdate(d, (_err, _balanceItem) => {
                             _stackSaving = _stackSaving.slice(1);
                             //_balance.save(); //async
                             actions.log('balance:items:remain-for-saving', _stackSaving.length);
-                        }, balanceItemMatch, balanceItemKeys).on('created', (err, _balanceItem) => {
+                        }, balanceItemMatch, balanceItemKeys).on('created', (_err, _balanceItem) => {
                             //_balance.items = _balance.items || [];
                             _balance.items.push(_balanceItem);
                             actions.log('balance:item:created **');
-                        }).on('updated', (err, _balanceItem) => {
+                        }).on('updated', (_err, _balanceItem) => {
                             actions.log('balance:item:updated **');
                         });
 
@@ -132,7 +138,7 @@ function balance(data, cb) {
                     var waitChilds = setInterval(() => {
                         if (_stackSaving.length === 0) {
                             clearInterval(waitChilds);
-                            _balance.save((err, r) => {
+                            _balance.save((_err, r) => {
                                 _retrieve();
                             });
                         }
@@ -142,8 +148,12 @@ function balance(data, cb) {
         }
 
         function _orderRules() {
-            if (_user.userType == 'diag') return { _diag: _user._id };
-            if (_user.userType == 'client') return { _client: _user._id };
+            if (_user.userType == 'diag') return {
+                _diag: _user._id
+            };
+            if (_user.userType == 'client') return {
+                _client: _user._id
+            };
             if (_user.userType == 'admin') return {};
         }
     }
@@ -162,26 +172,51 @@ function balance(data, cb) {
 }
 
 function save(data, cb) {
+    if(!_.includes(['diag','client','admin'],data.userType)){
+        return cb("invalid userType "+data.userType);
+    }
+    
     actions.createUpdate(data, cb, {
         email: data.email,
         userType: data.userType
     }, ['userType', 'email']).on('created', (err, _user) => {
+        
         var notify = null;
         switch (_user.userType) {
             case 'admin':
-                notify = email.adminNewAccount;
+                notify = NOTIFICATION.ADMIN_NEW_ACCOUNT;
                 break;
             case 'diag':
-                notify = email.diagNewAccount;
+                notify = NOTIFICATION.DIAG_NEW_ACCOUNT;
                 break;
             case 'client':
-                notify = email.clientNewAccount;
+                notify = NOTIFICATION.CLIENT_NEW_ACCOUNT;
                 break;
         }
         if (notify) {
-            notify(_user, (err, r) => email.handleNewAccount(_user, err, r));
+            Notif.trigger(notify,_user, (_err, r) => handleNewAccount(_user, err, r));
         }
     });
+}
+
+function handleNewAccount(_user, err, r) {
+    if(err) return Log.save(err,'error');
+    
+    actions.log('handleNewAccount:start '+JSON.stringify(r));
+    
+    if(!r) return Log.Save("Notify returns empty response",'error');
+    
+    if (r.ok) {
+        actions.log('handleNewAccount:'+_user.email + ': new account email sended' + JSON.stringify(r));
+        _user.passwordSended = true;
+        _user.save((err, r) => {
+            if (!err) actions.log('handleNewAccount:'+ _user.email + ' passwordSended=true');
+        });
+    }
+    else {
+        actions.log('handleNewAccount:'+ _user.email + ' new account email sended failed');
+        actions.log(JSON.stringify(err));
+    }
 }
 
 function create(data, cb) {
@@ -200,7 +235,10 @@ function createDiag(data, cb) {
     data.userType = 'diag';
     createUser(data, (err, _user) => {
         if (err) return cb(err, null);
-        email.diagNewAccount(_user, (err, r) => {
+
+
+
+        Notif.DIAG_NEW_ACCOUNT(_user, (err, r) => {
             //async (write log on error)
             if (r.ok) {
                 actions.log(_user.email + ' new account email sended' + JSON.stringify(r));
@@ -208,7 +246,8 @@ function createDiag(data, cb) {
                 _user.save((err, r) => {
                     if (!err) actions.log(_user.email + ' passwordSended=true');
                 });
-            } else {
+            }
+            else {
                 actions.log(_user.email + ' new account email sended failed');
                 actions.log(JSON.stringify(err));
             }
@@ -229,7 +268,7 @@ function createClient(data, cb) {
 }
 
 function sendAccountsDetails(_user) {
-    email.clientNewAccount(_user, (err, r) => {
+    Notif.CLIENT_NEW_ACCOUNT(_user, (err, r) => {
         //async (write log on error)
         if (r.ok) {
             actions.log(_user.email + ' new account email sended' + JSON.stringify(r));
@@ -237,7 +276,8 @@ function sendAccountsDetails(_user) {
             _user.save((err, r) => {
                 if (!err) actions.log(_user.email + ' passwordSended=true');
             });
-        } else {
+        }
+        else {
             actions.log(_user.email + ' new account email sended failed');
             actions.log(JSON.stringify(err));
         }
@@ -248,11 +288,14 @@ function createClientIfNew(data, cb) {
     actions.log('createClientIfNew=' + JSON.stringify(data));
     actions.check(data, ['email'], (err, r) => {
         if (err) return cb(err, null);
-        actions.get({ email: data.email }, (err, r) => {
+        actions.get({
+            email: data.email
+        }, (err, r) => {
             if (err) return cb(err, null);
             if (!r) {
                 createClient(data, cb);
-            } else {
+            }
+            else {
 
                 //in 10 seconds, try send account details if passwordSended==false
                 setTimeout(function() {
@@ -269,7 +312,7 @@ function createClientIfNew(data, cb) {
 
 function login(data, cb) {
     console.log('USER:login=' + JSON.stringify(data));
-    User.findOne(actions.toRules({
+    actions.model.findOne(actions.toRules({
         email: data.email,
         password: data.password
     })).exec(cb);
@@ -288,9 +331,11 @@ function passwordReset(data, cb) {
                 _user.password = generatePassword(8);
                 _user.save();
 
-                email.passwordReset(_user, (err, r) => {
+                Notif.trigger('PASSWORD_RESET',_user, (err, r) => {
                     return cb(err, r);
-                });
+                })
+
+
             }
         })
     });
@@ -301,7 +346,7 @@ exports.actions = {
     balance: balance,
     save: save,
     createClientIfNew: createClientIfNew,
-    createClient:createClient,
+    createClient: createClient,
     login: login,
     createDiag: createDiag,
     passwordReset: passwordReset,
@@ -322,6 +367,7 @@ exports.actions = {
 };
 
 exports.routes = (app) => {
+    /*
     app.post('/user/createClient', (req, res) => createClient(req.body, actions.result(res)));
     app.post('/user/existsById', (req, res) => actions.existsById(req.body, actions.result(res)));
     app.post('/user/existsByField', (req, res) => actions.existsByField(req.body, actions.result(res)));
@@ -334,5 +380,6 @@ exports.routes = (app) => {
     app.post('/user/getAll', (req, res) => actions.getAll(req.body, actions.result(res)));
     app.post('/user/remove', (req, res) => actions.remove(req.body, actions.result(res)));
     app.post('/user/removeAll', (req, res) => actions.removeAll(req.body, actions.result(res)));
+    */
     actions.log('routes-user-ok');
 }

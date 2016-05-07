@@ -18,6 +18,9 @@ var payment = require('./stripeService').actions;
 
 var email = require('./handlers.email').actions;
 
+var Notif = require('../actions/notification.actions').actions;
+var NOTIFICATION = require('../actions/notification.actions').NOTIFICATION;
+
 var saveKeys = ['_client', '_diag', 'diagStart', 'diagEnd', 'diags'
 
     , 'address', 'price' //, 'time'
@@ -145,21 +148,28 @@ function notifyPaymentSuccess(_order) {
     actions.log('notifyPaymentSuccess:start=' + JSON.stringify(_order));
     UserAction.get({
         _id: _order._client._id || _order._client
-    }, (err, _client) => {
-        email.orderPaymentSuccess(_client, _order, null);
+    }, (_err, _client) => {
+        _notify(_client, _order);
     });
     UserAction.get({
         _id: _order._diag._id || _order._diag
-    }, (err, _diag) => {
-        email.orderPaymentSuccess(_diag, _order, null);
+    }, (_err, _diag) => {
+        _notify(_diag, _order);
     });
     UserAction.getAll({
         userType: 'admin'
-    }, (err, _admins) => {
+    }, (_err, _admins) => {
         _admins.forEach((_admin) => {
-            email.orderPaymentSuccess(_admin, _order, null);
+            _notify(_admin, _order);
         })
     });
+
+    function _notify(_user, _order) {
+        Notif.trigger(NOTIFICATION.ORDER_PAYMENT_SUCCESS, {
+            _user: _user,
+            _order: _order
+        });
+    }
 }
 
 function syncStripe(data, cb) {
@@ -265,14 +275,18 @@ function confirm(data, cb) {
             }, (err, _admins) => {
                 if (err) return cb(err, _admins);
                 _admins.forEach(_admin => {
-                    email.orderConfirmedForInvoiceEndOfTheMonth(_admin, _order, (err, r) => {
+
+                    Notif.ORDER_CONFIRMED_FOR_INVOICE_END_OF_THE_MONTH({
+                        _user: _admin,
+                        _order: _order
+                    }, (_err, r) => {
                         if (r.ok) {
                             cb({
                                 ok: true,
                                 message: 'Order confirmed and admins notified by email.'
                             });
                         }
-                    });
+                    })
                 });
             });
         }
@@ -306,20 +320,31 @@ function save(data, cb) {
     actions.createUpdate(data, (err, r) => {
         if (err) return cb(err, r);
         cb(err, r);
-    }, {}, saveKeys).on('created', (err, _order) => {
+    }, {}, saveKeys).on('created', (_err, _order) => {
 
 
         UserAction.get({
             _id: _order._client._id || _order._client
-        }, (err, _client) => {
+        }, (_err, _client) => {
             _client._orders.push(_order.id);
-            email.newOrder(_client, _order, null);
+
+
+            Notif.trigger(NOTIFICATION.ORDER_CREATED, {
+                _user: _client,
+                _order: _order
+            });
+
         });
         UserAction.get({
             _id: _order._diag._id || _order._diag
-        }, (err, _diag) => {
+        }, (_err, _diag) => {
             _diag._orders.push(_order.id);
-            email.newOrder(_diag, _order, null);
+
+            Notif.trigger(NOTIFICATION.ORDER_CREATED, {
+                _user: _diag,
+                _order: _order
+            });
+
         });
 
         //admin get notified only when the order is prepaid or ordered.
@@ -401,12 +426,12 @@ function saveWithEmail(data, cb) {
             }
 
             if (data._client) {
-                if(data._client._id) data._client = data._client._id;
+                if (data._client._id) data._client = data._client._id;
                 return save(data, cb);
             }
             else {
-                
-                
+
+
                 actions.check(data, ['email', 'clientType'], (err, r) => {
                     if (err) return cb(err, r);
                     _setUserUsingEmailAndClientType();
@@ -466,24 +491,3 @@ exports.actions = {
     log: actions.log
 };
 
-exports.routes = (app) => {
-
-    app.post('/order/email', (req, res) => email.clientNewAccount(req.body, actions.result(res)));
-    app.post('/order/existsById', (req, res) => actions.existsById(req.body, actions.result(res)));
-    app.post('/order/existsByField', (req, res) => actions.existsByField(req.body, actions.result(res)));
-    app.post('/order/createUpdate', (req, res) => actions.createUpdate(req.body, actions.result(res)));
-    app.post('/order/create', (req, res) => create(req.body, actions.result(res)));
-    app.post('/order/find', (req, res) => actions.find(req.body, actions.result(res)));
-    app.post('/order/login', (req, res) => login(req.body, actions.result(res)));
-    app.post('/order/save', (req, res) => save(req.body, actions.result(res)));
-    app.post('/order/pay', (req, res) => pay(req.body, actions.result(res)));
-    //app.post('/order/syncPayments', (req, res) => syncPayments(req.body, actions.result(res)));
-    //app.post('/order/saveTest', (req, res) => saveTest(req.body, actions.result(res)));
-    app.post('/order/saveWithEmail', (req, res) => saveWithEmail(req.body, actions.result(res)));
-    app.post('/order/get', (req, res) => actions.get(req.body, actions.result(res)));
-    app.post('/order/getAll', (req, res) => actions.getAll(req.body, actions.result(res)));
-    app.post('/order/remove', (req, res) => actions.remove(req.body, actions.result(res)));
-    app.post('/order/removeAll', (req, res) => actions.removeAll(req.body, actions.result(res)));
-    actions.log('routes-order-ok');
-
-}

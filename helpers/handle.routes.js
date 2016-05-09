@@ -1,3 +1,8 @@
+//require('../actions/notification.actions');
+
+var notificationActions = require('../actions/notification.actions').actions;
+var NOTIFICATION        = require('../actions/notification.actions').NOTIFICATION;
+
 var mongoose            = require('./db').mongoose;
 var userActions         = require('./handlers.user').actions;
 var orderActions        = require('./handlers.order').actions;
@@ -7,61 +12,84 @@ var fileActions         = require('./db.gridfs').actions;
 var emailActions        = require('./handlers.email').actions;
 var textActions         = require('../actions/text.actions').actions;
 var stripeActions       = require('../actions/stripe.actions').actions;
-var notificationActions = require('../actions/notification.actions').actions;
-var NOTIFICATION        = require('../actions/notification.actions').NOTIFICATION;
+
 var _                   = require('lodash');
 var createController = require('./handler.actions').create;
+var Log = createController("Log");
 //
 exports.configure = function(app) {
+    
+    
     app.post('/ctrl/:controller/:action', function(req, res) {
         var controller = req.params.controller;
         var action = req.params.action;
         var data = req.body;
 
         var actions = {};
-
-        //if (_.includes(['User', 'Order'], controller)) {
         actions = createController(controller);
-        //}
+        var specialActions = {};
 
         if (controller == 'User') {
-            Object.assign(actions, userActions);
+            specialActions = userActions;
         }
         if (controller == 'Order') {
-            Object.assign(actions, orderActions);
+            specialActions =orderActions;
         }
         if (controller == 'Payment') {
-            Object.assign(actions, paymentActions);
+            specialActions = paymentActions;
         }
         if (controller == 'Stats') {
-            Object.assign(actions, statsActions);
+            specialActions = statsActions;
         }
 
         if (controller == 'File') {
-            Object.assign(actions, fileActions);
+            specialActions = fileActions;
         }
 
         if (controller == 'Email') {
-            Object.assign(actions, emailActions);
+            specialActions = emailActions;
         }
         
         if (controller == 'Text') {
-            Object.assign(actions, textActions);
+            specialActions = textActions;
         }
 
         if (controller == 'Stripe') {
-            Object.assign(actions, notificationActions);
+            specialActions = stripeActions;
         }
         
         if (controller == 'Notification') {
-            Object.assign(actions, stripeActions);
+            specialActions = notificationActions;
+        }
+        
+        
+        console.log('routes:ctrl:start');
+        console.log('routes:ctrl:controller',controller);
+        console.log('routes:ctrl:action',action);
+       // console.log('routes:ctrl:special-actions',specialActions);
+        //console.log('routes:ctrl:available-actions',Object.keys(actions));
+
+        Object.assign(actions, specialActions);
+        
+        if(!actions[action] && !actions.model[action]){
+            var cb = actions.result(res);
+            console.log('routes:ctrl:invalid-action-aborting',action);
+            Log.save({
+                message:'Invalid post ctrl action "'+action+'" detected on controller '+ controller,
+                type:'error'
+            });
+            return cb("action-not-found:"+action);
         }
 
         if(actions[action]){
+            console.log('routes:ctrl:calling',action);
             actions[action](data, actions.result(res),req,res);
         }else{
+            console.log('routes:ctrl:model-calling',action);
             actions.model[action](actions.toRules(data), actions.result(res),req,res);
         }
+        
+        console.log('routes:ctrl:end');
     });
 
     app.post('/File/save/',(req,res)=>{

@@ -1,27 +1,12 @@
-//var Order = mongoose.model('Order');
-//var User = mongoose.model('User');
-
-var NotificationHandler     = require('../actions/notification.actions').actions;
-var NOTIFICATION                   = require('../actions/notification.actions').NOTIFICATION;
-
-//console.log('HANDLERS.EMAIL',JSON.stringify(Object.keys(NotificationHandler)));
-
-
 var Order = require('./handler.actions').create('Order');
 var User = require('./handler.actions').create('User');
 var Log = require('./handler.actions').create('Log');
-var UserNotifications = require('./handler.actions').create('UserNotifications');
-var Notification = require('./handler.actions').create('Notification');
 var template = require('../utils/template');
 var sendEmail = require('./utils.mailing').sendEmail;
 var moment = require('moment');
-
-
 var btoa = require('btoa')
 var _ = require('lodash');
-
 var adminUrl = require('./utils').adminUrl;
-
 var modelName = 'email';
 var actions = {
     log: (m) => {
@@ -29,7 +14,7 @@ var actions = {
     }
 };
 
-exports.actions = {
+var EXPORT_ACTIONS = {
     NEW_CONTACT_FORM_MESSAGE: NEW_CONTACT_FORM_MESSAGE,
     NEW_CONTACT_FORM_MESSAGE: NEW_CONTACT_FORM_MESSAGE,
     DIPLOME_EXPIRATION: DIPLOME_EXPIRATION,
@@ -42,10 +27,26 @@ exports.actions = {
     PAYMENT_LINK: PAYMENT_LINK,
     ORDER_CONFIRMED_FOR_INVOICE_END_OF_THE_MONTH: ORDER_CONFIRMED_FOR_INVOICE_END_OF_THE_MONTH,
     send: send, //calling this function directly is deprecated.
+    test: () => {
+        NotificationHandler.save({
+            message: "test-notification-delete-now"
+        }, (_notification) => {
+            console.log('test-success');
+        });
+    }
 };
+exports.actions = EXPORT_ACTIONS;
 
 
 
+require('../actions/notification.actions').init(EXPORT_ACTIONS);
+var Notification = require('./handler.actions').create('Notification');
+var NotificationHandler = require('../actions/notification.actions').actions;
+var NOTIFICATION = require('../actions/notification.actions').NOTIFICATION;
+
+
+//console.log('EMAIL - NOTIFICATION',require('../actions/notification.actions'));
+//console.log('EMAIL - NOTIFICATION',require('../actions/notification.actions').actions);
 
 function dummySuccessResponse(cb) {
     actions.log('dummySuccessResponse:cb=' + JSON.stringify(cb));

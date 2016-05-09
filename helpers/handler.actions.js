@@ -121,7 +121,7 @@ exports.create = function(modelName, m) {
                     })
                 }
                 else {
-                    log('createUpdate:creating');
+                    log('createUpdate:creating',data);
                     _create(data, (err, r) => {
                         if (err) return rta(err, null);
                         emit('created', err, r);
@@ -131,7 +131,7 @@ exports.create = function(modelName, m) {
             });
             //
             function rta(err, r) {
-                if (err) error(err, r);
+                if (err) return error(err, r);
                 if (!cb) return;
                 if (err) return cb(err, r);
                 else then(err, r);

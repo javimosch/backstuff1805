@@ -3,7 +3,8 @@ var UserNotifications = require('../helpers/handler.actions').create('UserNotifi
 var User = require('../helpers/handler.actions').create('User');
 var Order = require('../helpers/handler.actions').create('Order');
 var Log = require('../helpers/handler.actions').create('Log');
-var EmailHandler = require('../helpers/handlers.email').actions;
+
+var EmailHandler = null; // require('../helpers/handlers.email').actions;
 var moment = require('moment');
 var S = require('string');
 var btoa = require('btoa')
@@ -28,21 +29,32 @@ var NOTIFICATION = {
     PASSWORD_RESET: 'PASSWORD_RESET'
 };
 
+var _actions = {
+    trigger: trigger,
+    save: save
+};
 Object.keys(NOTIFICATION).forEach(KEY => {
-    exports[KEY] = (data, cb) => trigger(KEY, data, cb);
+    _actions[KEY] = (data, cb) => trigger(KEY, data, cb);
 });
 
-exports.NOTIFICATION = NOTIFICATION;
-exports.actions = {
-    trigger,
-    save
+module.exports = {
+    NOTIFICATION: NOTIFICATION,
+    actions: _actions,
+    init: (_EmailHandler) => EmailHandler = _EmailHandler
 };
+
+function LogSave(msg, type) {
+    Log.save({
+        message: msg,
+        type: type || 'error'
+    });
+}
 
 function trigger(name, data, cb) {
     actions.log('trigger=' + JSON.stringify(data));
-    if (!name)                  return cb("name required");
-    if (!NOTIFICATION[name])    return cb("trigger notification not found: " + name);
-    actions.log('trigger:routing-'+name+'=' + JSON.stringify(data));
+    if (!name) return cb("name required");
+    if (!NOTIFICATION[name]) return cb("trigger notification not found: " + name);
+    actions.log('trigger:routing-' + name + '=' + JSON.stringify(data));
     data.__notificationType = name;
     return EmailHandler[name](data, cb);
 }
@@ -51,10 +63,10 @@ function trigger(name, data, cb) {
 
 function save(data, cb) {
     var _user = data._user;
-    var _user = _user.id  || _user;
-    if (!_user || !_user._id) {
-        Log.save('notification-save user-not-found');
-        if(!cb) return;
+    var _user = _user && _user.id || _user;
+    if (!_user) {
+        LogSave('notification-save user-not-found');
+        if (!cb) return;
         else return cb("notification-save user-not-found");
     }
 
@@ -62,13 +74,13 @@ function save(data, cb) {
     UserNotifications.get({
         _user: _user
     }, (err, _config) => {
-        if (err) return Log.save('UserNotifications getById fail for user ' + _user.email);
+        if (err) return LogSave('UserNotifications getById fail for user ' + _user.email);
         if (!_config) {
             //dblog("UserNotifications not found for " + _user.email + '.', 'info');
             UserNotifications.create({
                 _user: _user._id
             }, (err, _config) => {
-                if (err) return Log.save('UserNotifications create fail for user ' + _user.email);
+                if (err) return LogSave('UserNotifications create fail for user ' + _user.email);
                 saveNotificationOn(_config);
             })
         }
@@ -86,7 +98,7 @@ function save(data, cb) {
             subject: data.subject || 'not specified',
             contents: data.html || ''
         }, (err, _notification) => {
-            if (err) return Log.save('saveNotification fail when creating a notification for user ' + _user.email);
+            if (err) return LogSave('saveNotification fail when creating a notification for user ' + _user.email);
             if (cb) cb(_notification);
 
             _config.notifications.push(_notification);
@@ -96,5 +108,5 @@ function save(data, cb) {
 }
 
 
-console.log('NOTIFICATION.ACTIONS=EXPORTS',JSON.stringify(Object.keys(exports)));
+//console.log('NOTIFICATION = EXPORTS',JSON.stringify(Object.keys(module.exports)));
 //console.log('NOTIFICATION.ACTIONS / NOTIFICATION / DEBUG = ',JSON.stringify(Object.keys(exports.NOTIFICATION)));

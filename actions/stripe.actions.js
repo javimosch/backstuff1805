@@ -74,7 +74,7 @@ function makePayment(data, cb) {
     if (!data.description) return cb("makePayment: description required.", null);
     if (!data.currency) return cb("makePayment: currency required.", null);
     if (!data.statement_descriptor) return cb("makePayment: statement_descriptor required.", null);
-    infolog('payment-initiated-by', {
+    infolog('payment-initiated-by-'+data.email, {
         email: data.email,
         amount: data.amount,
         metadata: data.metadata || {},
@@ -86,7 +86,8 @@ function makePayment(data, cb) {
                 email: data.email,
                 amount: data.amount,
                 metadata: data.metadata || {},
-                currency: data.currency
+                currency: data.currency,
+                err:err
             });
             return cb(err, null);
         }

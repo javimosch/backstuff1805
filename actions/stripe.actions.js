@@ -11,6 +11,7 @@ var btoa = require('btoa')
 var _ = require('lodash');
 var modelName = 'stripe';
 var stripeSecretTokenDEV = "sk_test_P9NzNL96T3X3FEgwOVxw8ovm";
+var stripeCreate =  require("stripe");
 var stripe = require("stripe")(process.env.stripeSecretToken || stripeSecretTokenDEV);
 var actions = {
     log: (m) => {
@@ -67,6 +68,10 @@ function getCustomer(data, cb) {
 }
 
 function makePayment(data, cb) {
+    var _stripe = stripe;
+    if(data.test){
+        _stripe = stripeCreate(stripeSecretTokenDEV);
+    }
     actions.log('makePayment=' + JSON.stringify(data));
     if (!data.token) return cb("makePayment: token required.", null);
     if (!data.amount) return cb("makePayment: amount required.", null);
@@ -93,7 +98,7 @@ function makePayment(data, cb) {
         }
         else {
             actions.log('makePayment:customer=' + JSON.stringify(customer));
-            var charge = stripe.charges.create({
+            var charge = _stripe.charges.create({
                 amount: data.amount * 100, // amount in cents, again
                 currency: data.currency,
                 // source: data.token,

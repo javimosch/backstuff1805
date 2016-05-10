@@ -74,38 +74,52 @@ function makePayment(data, cb) {
     if (!data.description) return cb("makePayment: description required.", null);
     if (!data.currency) return cb("makePayment: currency required.", null);
     if (!data.statement_descriptor) return cb("makePayment: statement_descriptor required.", null);
+    infolog('payment-initiated-by', {
+        email: data.email,
+        amount: data.amount,
+        metadata: data.metadata || {},
+        currency: data.currency
+    });
     getCustomer(data, function(err, customer) {
-        if (err) return cb(err, null);
+        if (err) {
+            infolog('payment-error-while-retriving-customer', {
+                email: data.email,
+                amount: data.amount,
+                metadata: data.metadata || {},
+                currency: data.currency
+            });
+            return cb(err, null);
+        }
         else {
             actions.log('makePayment:customer=' + JSON.stringify(customer));
             var charge = stripe.charges.create({
                 amount: data.amount * 100, // amount in cents, again
                 currency: data.currency,
-               // source: data.token,
+                // source: data.token,
                 description: data.description,
                 customer: customer.id,
                 metadata: data.metadata || {},
                 capture: data.capture || true,
-                statement_descriptor:data.statement_descriptor||''
+                statement_descriptor: data.statement_descriptor || ''
             }, (err, charge) => {
-                if (err) { 
+                if (err) {
                     // && err.type === 'StripeCardError'
-                    cb(err, null); // The card has been declined
                     infolog('payment-failed', {
                         customer: customer,
                         charge: charge,
-                        metadata:data.metadata||{},
-                        err:err
+                        metadata: data.metadata || {},
+                        err: err
                     });
+                    cb(err, null); // The card has been declined
                 }
                 else {
                     actions.log('makePayment:rta=' + JSON.stringify(charge));
-                    cb(null, "payment-success");
                     infolog('payment-success', {
                         customer: customer,
                         charge: charge,
-                        metadata:data.metadata||{}
+                        metadata: data.metadata || {}
                     });
+                    cb(null, "payment-success");
                 }
             });
         }

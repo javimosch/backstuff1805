@@ -69,6 +69,7 @@ exports.create = function(modelName, m) {
         return promise((then, error, emit) => {
             //
             log('createUpdate=' + JSON.stringify(data));
+            log('createUpdate:requiredKeys=' + JSON.stringify(requiredKeys));
             check(data, requiredKeys || [], (err, r) => {
                 if (err) return rta(err, null);
                 if (data._id) {

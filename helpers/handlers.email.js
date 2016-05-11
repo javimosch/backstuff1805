@@ -22,6 +22,7 @@ var EXPORT_ACTIONS = {
     DIAG_NEW_ACCOUNT: DIAG_NEW_ACCOUNT,
     ADMIN_NEW_ACCOUNT: ADMIN_NEW_ACCOUNT,
     ORDER_CREATED: ORDER_CREATED,
+    DIAGS_CLIENT_ORDER_CREATED:DIAGS_CLIENT_ORDER_CREATED,
     PASSWORD_RESET: PASSWORD_RESET,
     ORDER_PAYMENT_SUCCESS: ORDER_PAYMENT_SUCCESS,
     PAYMENT_LINK: PAYMENT_LINK,
@@ -240,6 +241,28 @@ function DIPLOME_EXPIRATION(data, cb) {
         },
         cb: () => {}
     }, cb);
+}
+
+function DIAGS_CLIENT_ORDER_CREATED(data, cb) {
+    actions.log('DIAGS_CLIENT_ORDER_CREATED=' + JSON.stringify(_user));
+    var _user = data._user;
+    var _order = data._order;
+    send({
+        __notificationType: data.__notificationType,
+        _user: _user,
+        to: _user.email,
+        subject: "Bienvenue sur Diagnostical",
+        templateName: 'diags.client.order.created',
+        templateReplace: {
+            '$FIRSTNAME': _user.firstName || _user.email,
+            '$LASTNAME': _user.firstName || _user.email,
+            '$ORDER_URL': adminUrl('/orders/edit/' + _order._id),
+            //'$ORDER_DESCR': _order.address + ' (' + time(_order.diagStart) + ' - ' + time(_order.diagEnd) + ')',
+            //'$PASSWORD': _user.password || '[Contact support for the password]',
+            //'$URL': adminUrl('?email=' + _user.email + '&k=' + btoa(_user.password))
+        },
+        cb: cb
+    });
 }
 
 function ORDER_CREATED(data, cb) {

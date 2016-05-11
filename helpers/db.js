@@ -432,11 +432,11 @@ model('Order', {
         }],
         default: []
     },
-    diagStart: {
+    start: {
         type: Date,
         required: true
     },
-    diagEnd: {
+    end: {
         type: Date,
         required: true
     },

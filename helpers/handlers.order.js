@@ -8,6 +8,7 @@ var handleMissingKeys = require('./validator').handleMissingKeys;
 //var ClientActions = require('./handlers.client').actions;
 
 var Order = mongoose.model('Order');
+var Log = require('./handler.actions').create('Log');
 var User = require('./handler.actions').create('User');
 var actions = require('./handler.actions').create('Order');
 var UserAction = require('./handlers.user').actions;
@@ -21,10 +22,18 @@ var email = require('./handlers.email').actions;
 var Notif = require('../actions/notification.actions').actions;
 var NOTIFICATION = require('../actions/notification.actions').NOTIFICATION;
 
-var saveKeys = ['_client', '_diag', 'diagStart', 'diagEnd', 'diags'
+var saveKeys = ['_client', '_diag', 'start', 'end', 'diags'
 
     , 'address', 'price' //, 'time'
 ];
+
+
+function LogSave(msg, type) {
+    Log.save({
+        message: msg,
+        type: type || 'error'
+    });
+}
 
 function pay(data, cb) {
     actions.log('pay=' + JSON.stringify(data));
@@ -303,6 +312,37 @@ function create(data, cb) {
     actions.create(data, cb, saveKeys);
 }
 
+
+function notifyClientOrderCreation(_order) {
+    actions.log('async:notifyClientOrderCreation:start');
+    if (_order && _order.info) {
+        if (_order.info.clientNotified != true) {
+            UserAction.get({
+                _id: _order._client._id || _order._client
+            }, (_err, _client) => {
+                _client._orders.push(_order.id);
+                Notif.trigger(NOTIFICATION.DIAGS_CLIENT_ORDER_CREATED, {
+                    _user: _client,
+                    _order: _order
+                },function(err,r){
+                    if(err){
+                        LogSave("Order creation notification email send fail. The user is "+_client.email);
+                        actions.log('async:notifyClientOrderCreation:failed');
+                    }else{
+                        actions.log('async:notifyClientOrderCreation:success',_client.email);
+                        _order.info.clientNotified = true;
+                        _order.save();
+                    }
+                });
+            });
+        }else{
+            actions.log('async:notifyClientOrderCreation:already-notified');
+        }
+    }else{
+        actions.log('async:notifyClientOrderCreation:order-info-undefined');
+    }
+}
+
 function save(data, cb) {
     actions.log('save=' + JSON.stringify(data));
 
@@ -319,6 +359,9 @@ function save(data, cb) {
 
     actions.createUpdate(data, (err, r) => {
         if (err) return cb(err, r);
+
+        notifyClientOrderCreation(r);
+
         cb(err, r);
     }, {}, saveKeys).on('created', (_err, _order) => {
 
@@ -329,7 +372,7 @@ function save(data, cb) {
             _client._orders.push(_order.id);
 
 
-            Notif.trigger(NOTIFICATION.ORDER_CREATED, {
+            Notif.trigger(NOTIFICATION.DIAGS_CLIENT_ORDER_CREATED, {
                 _user: _client,
                 _order: _order
             });
@@ -490,4 +533,3 @@ exports.actions = {
     create: create,
     log: actions.log
 };
-

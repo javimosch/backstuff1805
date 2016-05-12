@@ -1,12 +1,13 @@
-var Order = require('./handler.actions').create('Order');
-var User = require('./handler.actions').create('User');
-var Log = require('./handler.actions').create('Log');
+var Order = require('../model/db.actions').create('Order');
+var User = require('../model/db.actions').create('User');
+var Log = require('../model/db.actions').create('Log');
+var statsActions = require('./ctrl.stats');
 var template = require('../utils/template');
-var sendEmail = require('./utils.mailing').sendEmail;
+var sendEmail = require('../model/utils.mailing').sendEmail;
 var moment = require('moment');
 var btoa = require('btoa')
 var _ = require('lodash');
-var adminUrl = require('./utils').adminUrl;
+var adminUrl = require('../model/utils').adminUrl;
 var modelName = 'email';
 var actions = {
     log: (m) => {
@@ -15,18 +16,29 @@ var actions = {
 };
 
 var EXPORT_ACTIONS = {
-    NEW_CONTACT_FORM_MESSAGE: NEW_CONTACT_FORM_MESSAGE,
-    DIPLOME_EXPIRATION: DIPLOME_EXPIRATION,
-    CLIENT_NEW_ACCOUNT: CLIENT_NEW_ACCOUNT,
-    DIAGS_DIAG_ACCOUNT_ACTIVATED:DIAGS_DIAG_ACCOUNT_ACTIVATED,
-    DIAGS_DIAG_ACCOUNT_CREATED: DIAGS_DIAG_ACCOUNT_CREATED,
-    ADMIN_NEW_ACCOUNT: ADMIN_NEW_ACCOUNT,
-    ORDER_CREATED: ORDER_CREATED,
-    DIAGS_CLIENT_ORDER_CREATED:DIAGS_CLIENT_ORDER_CREATED,
-    PASSWORD_RESET: PASSWORD_RESET,
-    ORDER_PAYMENT_SUCCESS: ORDER_PAYMENT_SUCCESS,
-    PAYMENT_LINK: PAYMENT_LINK,
-    ORDER_CONFIRMED_FOR_INVOICE_END_OF_THE_MONTH: ORDER_CONFIRMED_FOR_INVOICE_END_OF_THE_MONTH,
+
+    ADMIN_ADMIN_ACCOUNT_CREATED             : ADMIN_ADMIN_ACCOUNT_CREATED,
+    ADMIN_CLIENT_ACCOUNT_CREATED            : ADMIN_CLIENT_ACCOUNT_CREATED,
+    ADMIN_DIAG_ACCOUNT_CREATED              : ADMIN_DIAG_ACCOUNT_CREATED,
+    ADMIN_DIPLOME_EXPIRATION                : ADMIN_DIPLOME_EXPIRATION,
+    ADMIN_NEW_CONTACT_FORM_MESSAGE          : ADMIN_NEW_CONTACT_FORM_MESSAGE,
+    ADMIN_ORDER_PAYMENT_DELEGATED           : ADMIN_ORDER_PAYMENT_DELEGATED,
+    ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS     : ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS,
+    ADMIN_ORDER_PAYMENT_SUCCESS             : ADMIN_ORDER_PAYMENT_SUCCESS,
+    
+    CLIENT_CLIENT_NEW_ACCOUNT               : CLIENT_CLIENT_NEW_ACCOUNT,
+    CLIENT_ORDER_DELEGATED                  : CLIENT_ORDER_DELEGATED,
+    CLIENT_ORDER_PAYMENT_SUCCESS            : CLIENT_ORDER_PAYMENT_SUCCESS,
+   
+    DIAG_DIAG_ACCOUNT_CREATED               : DIAG_DIAG_ACCOUNT_CREATED,
+    DIAG_NEW_RDV                            : DIAG_NEW_RDV,
+    DIAG_RDV_CONFIRMED                      : DIAG_RDV_CONFIRMED,
+    
+    LANDLORD_ORDER_PAYMENT_DELEGATED:LANDLORD_ORDER_PAYMENT_DELEGATED,
+    LANDLORD_ORDER_PAYMENT_SUCCESS: LANDLORD_ORDER_PAYMENT_SUCCESS,
+    
+    USER_PASSWORD_RESET: USER_PASSWORD_RESET,
+    
     send: send, //calling this function directly is deprecated.
     test: () => {
         NotificationHandler.save({
@@ -36,14 +48,14 @@ var EXPORT_ACTIONS = {
         });
     }
 };
-exports.actions = EXPORT_ACTIONS;
+module.exports = EXPORT_ACTIONS;
 
 
 
-require('../actions/notification.actions').init(EXPORT_ACTIONS);
-var Notification = require('./handler.actions').create('Notification');
-var NotificationHandler = require('../actions/notification.actions').actions;
-var NOTIFICATION = require('../actions/notification.actions').NOTIFICATION;
+require('../controllers/ctrl.notification').init(EXPORT_ACTIONS);
+var Notification = require('../model/db.actions').create('Notification');
+var NotificationHandler = require('../controllers/ctrl.notification');
+var NOTIFICATION = NotificationHandler.NOTIFICATION;
 
 
 //console.log('EMAIL - NOTIFICATION',require('../actions/notification.actions'));
@@ -182,19 +194,23 @@ function time(d) {
     return moment(d).format('HH:mm');
 }
 
-function NEW_CONTACT_FORM_MESSAGE(data, cb) {
-    actions.log('NEW_CONTACT_FORM_MESSAGE=' + JSON.stringify(data));
+function dateTime(d) {
+    return moment(d).format('DD-MM-YY HH[h]mm');
+}
+
+function ADMIN_NEW_CONTACT_FORM_MESSAGE(data, cb) {
+    actions.log('ADMIN_NEW_CONTACT_FORM_MESSAGE=' + JSON.stringify(data));
     cb(null, "Send in progress"); //async op
     User.getAll({
         userType: 'admin'
     }, function(err, admins) {
         if (err) {
-            return dblog('NEW_CONTACT_FORM_MESSAGE fail when retrieve admins. Details: ' + JSON.stringify(err));
+            return dblog('ADMIN_NEW_CONTACT_FORM_MESSAGE fail when retrieve admins. Details: ' + JSON.stringify(err));
         }
         admins.forEach(admin => {
             var _data = _.cloneDeep(data);
             _data._user = admin;
-            NEW_CONTACT_FORM_MESSAGE_SINGLE(_data, function() {
+            ADMIN_NEW_CONTACT_FORM_MESSAGE_SINGLE(_data, function() {
                 //no-log 
             });
         });
@@ -202,16 +218,16 @@ function NEW_CONTACT_FORM_MESSAGE(data, cb) {
 }
 
 
-function NEW_CONTACT_FORM_MESSAGE_SINGLE(data, cb) {
-    actions.log('NEW_CONTACT_FORM_MESSAGE_SINGLE=' + JSON.stringify(data));
+function ADMIN_NEW_CONTACT_FORM_MESSAGE_SINGLE(data, cb) {
+    actions.log('ADMIN_NEW_CONTACT_FORM_MESSAGE_SINGLE=' + JSON.stringify(data));
     //data = {_admin,_diag,}
     //vars: ADMIN_NAME DIAG_NAME DIAG_DIPLOME_FILENAME DIAG_EDIT_URL
     send({
-        __notificationType: data.__notificationType,
+        __notificationType: NOTIFICATION.ADMIN_NEW_CONTACT_FORM_MESSAGE,
         _user: data._user,
         to: data._user.email,
         subject: "Site contact form: new message",
-        templateName: 'contact-form',
+        templateName: 'ADMIN_NEW_CONTACT_FORM_MESSAGE',
         templateReplace: {
             '$USER_NAME': data._user.firstName || data._user.email,
             '$CLIENT_NAME': data.fullname,
@@ -223,19 +239,20 @@ function NEW_CONTACT_FORM_MESSAGE_SINGLE(data, cb) {
     }, cb);
 }
 
-function DIPLOME_EXPIRATION(data, cb) {
-    actions.log('DIPLOME_EXPIRATION=' + JSON.stringify(data));
+function ADMIN_DIPLOME_EXPIRATION(data, cb) {
+    actions.log('ADMIN_DIPLOME_EXPIRATION=' + JSON.stringify(data));
     //data = {_admin,_diag,}
     //vars: ADMIN_NAME DIAG_NAME DIAG_DIPLOME_FILENAME DIAG_EDIT_URL
     send({
         __notificationType: data.__notificationType,
         _user: data._admin,
         to: data._admin.email,
-        subject: "Diag diplome expiration",
-        templateName: 'diplome.expiration',
+        subject: "ATTENTION Diplôme Expiré",
+        templateName: 'ADMIN_DIPLOME_EXPIRATION',
         templateReplace: {
-            '$ADMIN_NAME': data._admin.firstName || data._admin.email,
-            '$DIAG_NAME': data._diag.firstName || data._diag.email,
+            '$DIAG_NAME': data._diag.firstName,
+            '$DIAG_MOBILE': data._diag.cellPhone,
+            '$DIAG_DIPLOME_EXPIRATION_DATE': data._info.expirationDate,
             '$DIAG_DIPLOME_FILENAME': data.filename,
             '$DIAG_EDIT_URL': adminUrl('/diags/edit/' + data._diag._id),
         },
@@ -243,16 +260,16 @@ function DIPLOME_EXPIRATION(data, cb) {
     }, cb);
 }
 
-function DIAGS_CLIENT_ORDER_CREATED(data, cb) {
-    actions.log('DIAGS_CLIENT_ORDER_CREATED=' + JSON.stringify(_user));
+function CLIENT_ORDER_CREATED(data, cb) {
+    actions.log('CLIENT_ORDER_CREATED=' + JSON.stringify(_user));
     var _user = data._user;
     var _order = data._order;
     send({
-        __notificationType: NOTIFICATION.DIAGS_CLIENT_ORDER_CREATED,
+        __notificationType: NOTIFICATION.CLIENT_ORDER_CREATED,
         _user: _user,
         to: _user.email,
         subject: "Bienvenue sur Diagnostical",
-        templateName: 'diags.client.order.created',
+        templateName: 'CLIENT_ORDER_CREATED',
         templateReplace: {
             '$FIRSTNAME': _user.firstName || _user.email,
             '$LASTNAME': _user.firstName || _user.email,
@@ -352,6 +369,135 @@ function ORDER_CONFIRMED_FOR_INVOICE_END_OF_THE_MONTH(data, cb) {
     });
 }
 
+function DIAG_RDV_CONFIRMED(data, cb) {
+    data._order.notifications = data._order.notifications || {};
+    if (data._order.notifications.DIAG_RDV_CONFIRMED !== true) {
+        var _subject = 'RDV confirmé: ' + data._order.address + '/' + dateTime(data._order.start);
+        return DIAGS_USER_ORDER_CUSTOM(data, (err, r) => {
+            data._order.notifications.DIAG_RDV_CONFIRMED = true;
+            User.update(data._order);
+            cb(err, r);
+        }, _subject, 'DIAG_RDV_CONFIRMED', data._diag.email, NOTIFICATION.DIAG_RDV_CONFIRMED);
+    }
+}
+
+function DIAG_NEW_RDV(data, cb) {
+    data._order.notifications = data._order.notifications || {};
+    if (data._order.notifications.DIAG_NEW_RDV !== true) {
+        var _subject = 'Nouveau RDV : ' + data._order.address + '/' + dateTime(data._order.start);
+        return DIAGS_USER_ORDER_CUSTOM(data, (err, r) => {
+            data._order.notifications.DIAG_NEW_RDV = true;
+            User.update(data._order);
+            cb(err, r);
+        }, _subject, 'DIAG_NEW_RDV', data._diag.email, NOTIFICATION.DIAG_NEW_RDV);
+    }
+}
+
+
+
+function ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS(data, cb) {
+    statsActions.currentMonthTotalRevenueHT({}, (_err, _currentMonthTotalRevenueHT) => {
+        data._order.currentMonthTotalRevenueHT = _currentMonthTotalRevenueHT;
+        var _subject = 'Paiement confirmé: ' + data._order.address + '/' + dateTime(data._order.start);
+        return DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, 'ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS', data._user.email, NOTIFICATION.ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS);
+    });
+}
+
+
+function ADMIN_ORDER_PAYMENT_SUCCESS(data, cb) {
+    statsActions.currentMonthTotalRevenueHT({}, (_err, _currentMonthTotalRevenueHT) => {
+        data._order.currentMonthTotalRevenueHT = _currentMonthTotalRevenueHT;
+        var _subject = 'Paiement confirmé: ' + data._order.address + '/' + dateTime(data._order.start);
+        return DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, 'ADMIN_ORDER_PAYMENT_SUCCESS', data._user.email, NOTIFICATION.ADMIN_ORDER_PAYMENT_SUCCESS);
+    });
+}
+
+function ADMIN_ORDER_PAYMENT_DELEGATED(data, cb) {
+    var _subject = dateTime(data._order.start)  + '/' + data._order.address   + " Paiement Délégué";
+    return DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, 'ADMIN_ORDER_PAYMENT_DELEGATED', data._user.email, NOTIFICATION.ADMIN_ORDER_PAYMENT_DELEGATED);
+}
+
+function CLIENT_ORDER_DELEGATED(data, cb) {
+    var _subject = 'RDV en attente de paiement: ' + data._order.address + '/' + dateTime(data._order.start);
+    return DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, 'CLIENT_ORDER_DELEGATED', data._user.email, NOTIFICATION.CLIENT_ORDER_DELEGATED);
+}
+
+function CLIENT_ORDER_PAYMENT_SUCCESS(data, cb) {
+    var _subject = 'RDV en attente de paiement: ' + data._order.address + '/' + dateTime(data._order.start);
+    return DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, 'CLIENT_ORDER_PAYMENT_SUCCESS', data._user.email, NOTIFICATION.CLIENT_ORDER_PAYMENT_SUCCESS);
+}
+
+
+function LANDLORD_ORDER_PAYMENT_DELEGATED(data, cb) {
+    var _subject = 'Diagnostic Réservé en attente de paiement';
+    return DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, 'LANDLORD_ORDER_PAYMENT_DELEGATED', data._user.email, NOTIFICATION.LANDLORD_ORDER_PAYMENT_DELEGATED);
+}
+
+function LANDLORD_ORDER_PAYMENT_SUCCESS(data, cb) {
+    var _subject = 'Rendez-vous confirmé';
+    return DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, 'LANDLORD_ORDER_PAYMENT_SUCCESS', data._user.landLordEmail, NOTIFICATION.LANDLORD_ORDER_PAYMENT_SUCCESS);
+}
+
+function DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, templateName, _to, _type) {
+    var _user = data._user;
+    var _order = data._order;
+    actions.log(_type + '=' + JSON.stringify({
+        email: _user.email,
+        _order: _order._id,
+        price: _order.price
+    }));
+    send({
+        __notificationType: _type,
+        _user: _user,
+        to: _to,
+        subject: _subject,
+        templateName: 'order.payment.success.' + _user.userType,
+        templateReplace: {
+            '$USER_EMAIL': _user.email,
+            '$USER_FIRSTNAME': _user.firstName,
+            '$USER_LASTNAME': _user.lastName,
+            '$CLIENT_COMPANY_NAME': _order._client.companyName,
+            '$CLIENT_FULL_NAME': _order._client.firstName + ' ' + _order._client.lastName,
+            '$CLIENT_FIRSTNAME': _order._client.firstName,
+            '$CLIENT_PHONE_NUMBER': _order._client.cellPhone,
+            '$CLIENT_EMAIL': _order._client.email,
+            '$DIAG_EMAIL': _order._diag.email,
+            '$DIAG_FULL_NAME': _order._diag.firstName + ' ' + _order._diag.lastName,
+            '$DIAG_FIRSTNAME': _order._diag.firstName,
+            '$DIAG_LASTNAME': _order._diag.lastName,
+            '$LANDLORD_FULLNAME': _user.landLordFullName,
+            '$LANDLORD_EMAIL': _user.landLordEmail,
+            '$LANDLORD_PHONE': _user.landLordPhone,
+            '$ORDER_DIAG_LIST': htmlOrderSelectedDiagsList(_order),
+            '$ORDER_ADDRESS': _order.address,
+            '$ORDER_KEYS_INFO': _order.keysAddress + ' / ' + _order.keysTimeFrom + ' - ' + _order.keysTimeFrom,
+            '$ORDER_OBSERVATION': _order.obs,
+            '$ORDER_PRICE_TTC': _order.price,
+            '$ORDER_PRICE_HT': _order.priceHT,
+            '$ORDER_DIAG_REMUNERATION_HT': _order.diagRemunerationHT,
+            '$ORDER_REVENUE_HT': _order.revenueHT,
+            '$ORDER_MONTH_REVENUE_HT': _order.currentMonthTotalRevenueHT,
+            
+            '$ORDER_DATE_HOUR': dateTime(_order.start),
+            '$ORDER_DESCRIPTION': _order.info.description,
+            '$ORDER_URL': adminUrl('/orders/edit/' + _order._id),
+            '$ORDER_PUBLIC_URL': adminUrl('/orders/view/' + _order._id),
+            //'$ORDER_DESCR': _order.address + ' (' + time(_order.diagStart) + ' - ' + time(_order.diagEnd) + ')',
+        },
+        cb: cb
+    });
+}
+
+function htmlOrderSelectedDiagsList(_order) {
+    var rta = "<ul>";
+    Object.keys(_order.diags).forEach(key => {
+        if (_order.diags[key]) {
+            rta += "<li>" + key + "</li>";
+        }
+    })
+    return rta + '</ul>';
+}
+
 function ORDER_PAYMENT_SUCCESS(data, cb) {
     var _user = data._user;
     var _order = data._order;
@@ -376,15 +522,15 @@ function ORDER_PAYMENT_SUCCESS(data, cb) {
 }
 
 
-function DIAGS_DIAG_ACCOUNT_CREATED(data, cb) {
+function ADMIN_DIAG_ACCOUNT_CREATED(data, cb) {
     var _user = data._user;
-    actions.log('DIAGS_DIAG_ACCOUNT_CREATED=' + JSON.stringify(_user));
+    actions.log('ADMIN_DIAG_ACCOUNT_CREATED=' + JSON.stringify(_user));
     send({
-        __notificationType: NOTIFICATION.DIAGS_DIAG_ACCOUNT_CREATED,
+        __notificationType: NOTIFICATION.ADMIN_DIAG_ACCOUNT_CREATED,
         _user: _user,
         to: data.adminEmail,
         subject: "Nouveau Diagnostiqueur",
-        templateName: 'diags.diag-account-created',
+        templateName: 'ADMIN_DIAG_ACCOUNT_CREATED',
         templateReplace: {
             '$EMAIL': _user.firstName,
             '$FIRSTNAME': _user.firstName,
@@ -396,19 +542,47 @@ function DIAGS_DIAG_ACCOUNT_CREATED(data, cb) {
     });
 }
 
-function ADMIN_NEW_ACCOUNT(data, cb) {
-    var _user = data;
-    actions.log('ADMIN_NEW_ACCOUNT=' + JSON.stringify(_user));
+
+
+function ADMIN_CLIENT_ACCOUNT_CREATED(data, cb) {
+    var _client = data._client;
+    var _admin = data._admin;
+    actions.log('ADMIN_CLIENT_ACCOUNT_CREATED:start');
     send({
-        __notificationType: NOTIFICATION.ADMIN_NEW_ACCOUNT,
+        __notificationType: NOTIFICATION.ADMIN_CLIENT_ACCOUNT_CREATED,
+        _user: _admin,
+        to: _admin.email,
+        subject: "Nouveau client",
+        templateName: 'ADMIN_CLIENT_ACCOUNT_CREATED',
+        templateReplace: {
+            '$ADMIN_FIRSTNAME'      : _admin.firstName,
+            '$CLIENT_EMAIL'          : _client.email,
+            '$CLIENT_COMPANY_NAME'  : _client.companyName,
+            '$CLIENT_FIRSTNAME'     : _client.lastName,
+            '$CLIENT_LASTNAME'      : _client.lastName,
+            '$CLIENT_PHONE'         : _client.cellPhone,
+            '$CLIENT_ADDRESS'       : _client.address,
+            '$CLIENT_TYPE'          : _client.clientType,
+            '$EDIT_URL'             : adminUrl('/clients/edit/' + _client._id),
+        },
+        cb: cb
+    });
+}
+
+function ADMIN_ADMIN_ACCOUNT_CREATED(data, cb) {
+    var _user = data;
+    actions.log('ADMIN_ADMIN_ACCOUNT_CREATED=' + JSON.stringify(_user));
+    send({
+        __notificationType: NOTIFICATION.ADMIN_ADMIN_ACCOUNT_CREATED,
         _user: _user,
         to: _user.email,
         subject: "Your Admin Account is ready",
-        templateName: 'admin.new.account',
+        templateName: 'ADMIN_ADMIN_ACCOUNT_CREATED',
         templateReplace: {
-            '$NAME': _user.firstName || _user.email,
-            '$PASSWORD': _user.password || '[Contact support for the password]',
-            '$URL': process.env.adminURL || 'http://localhost:3000/admin?email=' + _user.email + '&k=' + btoa(_user.password)
+            '$FIRSTNAME': _user.firstName,
+            '$LASTNAME': _user.lastName,
+            '$PASSWORD': _user.password || '[Press reset password in the login screen]',
+            '$BACKOFFICE_URL': adminUrl('login?email=' + _user.email + '&k=' + btoa(_user.password))
         },
         cb: cb
     });
@@ -421,16 +595,16 @@ function dblog(msg, type) {
     });
 }
 
-function DIAGS_DIAG_ACCOUNT_ACTIVATED(data,cb){
+function DIAG_DIAG_ACCOUNT_CREATED(data, cb) {
     var _user = data;
-    actions.log('DIAGS_DIAG_ACCOUNT_ACTIVATED=' + JSON.stringify(_user));
-    actions.log('DIAGS_DIAG_ACCOUNT_ACTIVATED:NOTIFICATION=' + JSON.stringify(NOTIFICATION));
+    actions.log('DIAG_DIAG_ACCOUNT_CREATED=' + JSON.stringify(_user));
+    actions.log('DIAG_DIAG_ACCOUNT_CREATED:NOTIFICATION=' + JSON.stringify(NOTIFICATION));
     send({
-        __notificationType: NOTIFICATION.DIAGS_DIAG_ACCOUNT_ACTIVATED,
+        __notificationType: NOTIFICATION.DIAG_DIAG_ACCOUNT_CREATED,
         _user: _user,
         to: _user.email,
         subject: "Vous êtes Diagnostiqueur sur Diagnostical !",
-        templateName: 'diags.diag-account-activated',
+        templateName: 'DIAG_DIAG_ACCOUNT_CREATED',
         templateReplace: {
             '$FIRSTNAME': _user.firstName,
             '$LASTNAME': _user.lastName,
@@ -440,20 +614,20 @@ function DIAGS_DIAG_ACCOUNT_ACTIVATED(data,cb){
     });
 }
 
-function CLIENT_NEW_ACCOUNT(data, cb) {
+function CLIENT_CLIENT_NEW_ACCOUNT(data, cb) {
     var _user = data;
-    actions.log('CLIENT_NEW_ACCOUNT=' + JSON.stringify(_user));
-    actions.log('CLIENT_NEW_ACCOUNT:NOTIFICATION=' + JSON.stringify(NOTIFICATION));
+    actions.log('CLIENT_CLIENT_NEW_ACCOUNT=' + JSON.stringify(_user));
+    actions.log('CLIENT_CLIENT_NEW_ACCOUNT:NOTIFICATION=' + JSON.stringify(NOTIFICATION));
     send({
         __notificationType: NOTIFICATION.CLIENT_NEW_ACCOUNT,
         _user: _user,
         to: _user.email,
         subject: "Bienvenue sur Diagnostical",
-        templateName: 'client.new.account',
+        templateName: 'CLIENT_CLIENT_NEW_ACCOUNT',
         templateReplace: {
             '$FIRSTNAME': _user.firstName,
             '$LASTNAME': _user.lastName,
-            '$BACKOFFICE_URL': process.env.adminURL || 'http://localhost:3000/admin?email=' + _user.email + '&k=' + btoa(_user.password)
+            '$BACKOFFICE_URL': adminUrl('login?email=' + _user.email + '&k=' + btoa(_user.password))
         },
         cb: cb
     });
@@ -461,15 +635,15 @@ function CLIENT_NEW_ACCOUNT(data, cb) {
 
 
 
-function PASSWORD_RESET(data, cb) {
+function USER_PASSWORD_RESET(data, cb) {
     var _user = data;
-    actions.log('PASSWORD_RESET=' + JSON.stringify(_user));
+    actions.log('USER_PASSWORD_RESET=' + JSON.stringify(_user));
     send({
-        __notificationType: NOTIFICATION.PASSWORD_RESET,
+        __notificationType: NOTIFICATION.USER_PASSWORD_RESET,
         _user: _user,
         to: _user.email,
         subject: "Password reset",
-        templateName: 'user.new.password',
+        templateName: 'USER_PASSWORD_RESET',
         templateReplace: {
             '$NAME': _user.firstName || _user.email,
             '$PASS': _user.password || '[Contact support for the password]',

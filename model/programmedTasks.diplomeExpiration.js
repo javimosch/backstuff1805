@@ -1,12 +1,12 @@
 var _ = require('lodash');
 var moment = require('moment');
-var User = require('./handler.actions').create('User');
-var Order = require('./handler.actions').create('Order');
+var User = require('./db.actions').create('User');
+var Order = require('./db.actions').create('Order');
 var name = 'diplomeExpirationCheck';
-var Log = require('./handler.actions').create('Log');
-var Email = require('./handlers.email').actions;
-var Notif = require('../actions/notification.actions').actions;
-var NOTIFICATION = require('../actions/notification.actions').NOTIFICATION;
+var Log = require('./db.actions').create('Log');
+var Email = require('../controllers/ctrl.email');
+var Notif = require('../controllers/ctrl.notification');
+var NOTIFICATION = Notif.NOTIFICATION;
 var log = (m) => {
     console.log(name + ': ' + m);
     return name + ': ' + m;
@@ -80,6 +80,7 @@ function sendEmail(_admin, _diag, _info, _diplomeId) {
         data: {
             _admin: _admin,
             _diag: _diag,
+            _info: _info,
             filename: _info.filename,
         }
     }, (_err, r) => {

@@ -1,12 +1,12 @@
-var Order = require('./handler.actions').create('Order');
-var User = require('./handler.actions').create('User');
-var getFile = require('./utils').getFile;
-var sendEmail = require('./utils.mailing').sendEmail;
+var Order = require('../model/db.actions').create('Order');
+var User = require('../model/db.actions').create('User');
+var getFile = require('../model/utils').getFile;
+var sendEmail = require('../model/utils.mailing').sendEmail;
 var moment = require('moment');
 var S = require('string');
 var btoa = require('btoa')
-var adminUrl = require('./utils').adminUrl;
-var formatTime = require('./utils').formatTime;
+var adminUrl = require('../model/utils').adminUrl;
+var formatTime = require('../model/utils').formatTime;
 var _ = require('lodash');
 
 var stripeSecretTokenDEV = "sk_test_P9NzNL96T3X3FEgwOVxw8ovm";
@@ -212,8 +212,9 @@ function captureOrderCharge(charge, cb) {
     });
 }
 
-exports.stripe = stripe;
-exports.actions = {
+//exports.stripe = stripe;
+module.exports = {
+    stripe:stripe,
     listDiagCharges: listDiagCharges,
     diagBalance: diagBalance,
     payOrder: payOrder,

@@ -139,7 +139,7 @@ exports.create = function(modelName, m) {
                 else {
                     then(err, r);
                     log('createUpdate:rta' + JSON.stringify(r));
-                    return cb(err, r);
+                    if(cb) return cb(err, r);
                 }
             }
         });

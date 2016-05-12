@@ -2,33 +2,32 @@ var Grid = require('gridfs-stream');
 var fs = require('fs');
 var path = require("path");
 var generatePassword = require("password-maker");
-//var Busboy = require('busboy');
 var inspect = require('util').inspect;
-
 var modelName = 'file';
-/*var actions = {
-    log: (m) => {
-        console.log(modelName.toUpperCase() + ': ' + m);
-    }
-};
-*/
-
-
 var conn, Schema, gfs, mongoose, actions;
-
-exports.configure = (m) => {
+var configure = (m) => {
     mongoose = m;
     Grid.mongo = mongoose.mongo;
     conn = mongoose.connection;
     Schema = mongoose.Schema;
     gfs = Grid(conn.db);
+};
+var configureActions = () => {
+    actions = require('../model/db.actions').create('File', mongoose);
+};
 
-
-}
-
-exports.configureActions = () => {
-    actions = require('./handler.actions').create('File', mongoose);
-}
+module.exports = {
+    configureActions:configureActions,
+    configure:configure,
+    exists: exists,
+    read: read,
+    write: write,
+    find: find,
+    remove: remove,
+    get: get,
+    save: save,
+    removeAll: removeAll
+};
 
 function write(data, cb) {
     actions.log('write:start=' + JSON.stringify(data));
@@ -204,13 +203,3 @@ function streamToString(stream, cb) {
     });
 }
 
-exports.actions = {
-    exists: exists,
-    read: read,
-    write: write,
-    find: find,
-    remove: remove,
-    get: get,
-    save: save,
-    removeAll: removeAll
-};

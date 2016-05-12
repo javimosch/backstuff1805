@@ -1,8 +1,8 @@
-var Notification = require('../helpers/handler.actions').create('Notification');
-var UserNotifications = require('../helpers/handler.actions').create('UserNotifications');
-var User = require('../helpers/handler.actions').create('User');
-var Order = require('../helpers/handler.actions').create('Order');
-var Log = require('../helpers/handler.actions').create('Log');
+var Notification = require('../model/db.actions').create('Notification');
+var UserNotifications = require('../model/db.actions').create('UserNotifications');
+var User = require('../model/db.actions').create('User');
+var Order = require('../model/db.actions').create('Order');
+var Log = require('../model/db.actions').create('Log');
 
 var EmailHandler = null; // require('../helpers/handlers.email').actions;
 var moment = require('moment');
@@ -17,40 +17,47 @@ var actions = {
 };
 
 var NOTIFICATION = {
-    ORDER_CREATED: 'ORDER_CREATED',
+    ADMIN_ADMIN_ACCOUNT_CREATED         : 'ADMIN_ADMIN_ACCOUNT_CREATED',
+    ADMIN_CLIENT_ACCOUNT_CREATED        : 'ADMIN_CLIENT_ACCOUNT_CREATED',
+    ADMIN_DIAG_ACCOUNT_CREATED          : 'ADMIN_DIAG_ACCOUNT_CREATED',
+    ADMIN_DIPLOME_EXPIRATION            : 'ADMIN_DIPLOME_EXPIRATION',
+    ADMIN_NEW_CONTACT_FORM_MESSAGE      : 'ADMIN_NEW_CONTACT_FORM_MESSAGE', //notif_newContactFormMessage,
+    ADMIN_ORDER_PAYMENT_DELEGATED       : 'ADMIN_ORDER_PAYMENT_DELEGATED',
+    ADMIN_ORDER_PAYMENT_SUCCESS         : 'ADMIN_ORDER_PAYMENT_SUCCESS',
+    ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS : 'ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS',
     
-    DIAGS_CLIENT_ORDER_CREATED: 'DIAGS_CLIENT_ORDER_CREATED',
-    DIAGS_DIAG_ACCOUNT_ACTIVATED:'DIAGS_DIAG_ACCOUNT_ACTIVATED',
-    DIAGS_DIAG_ACCOUNT_CREATED: 'DIAGS_DIAG_ACCOUNT_CREATED',
+    CLIENT_CLIENT_NEW_ACCOUNT           : 'CLIENT_CLIENT_NEW_ACCOUNT',
+    CLIENT_ORDER_CREATED                : 'CLIENT_ORDER_CREATED',
+    CLIENT_ORDER_PAYMENT_SUCCESS        : 'CLIENT_ORDER_PAYMENT_SUCCESS',
+    CLIENT_ORDER_DELEGATED              : 'CLIENT_ORDER_DELEGATED',
     
-    CLIENT_NEW_ACCOUNT: 'CLIENT_NEW_ACCOUNT',
-    ADMIN_NEW_ACCOUNT: 'ADMIN_NEW_ACCOUNT',
-    NEW_CONTACT_FORM_MESSAGE: 'NEW_CONTACT_FORM_MESSAGE', //notif_newContactFormMessage,
-    PAYMENT_LINK: 'PAYMENT_LINK',
-    ORDER_CONFIRMED_FOR_INVOICE_END_OF_THE_MONTH: 'ORDER_CONFIRMED_FOR_INVOICE_END_OF_THE_MONTH',
-    ORDER_PAYMENT_SUCCESS: 'ORDER_PAYMENT_SUCCESS',
-    DIPLOME_EXPIRATION: 'DIPLOME_EXPIRATION',
-    PASSWORD_RESET: 'PASSWORD_RESET'
+    DIAG_DIAG_ACCOUNT_CREATED           : 'DIAG_DIAG_ACCOUNT_CREATED',
+    DIAG_NEW_RDV                        : 'DIAG_NEW_RDV',
+    DIAG_RDV_CONFIRMED                  : 'DIAG_RDV_CONFIRMED',
+
+    LANDLORD_ORDER_DELEGATED            : 'LANDLORD_ORDER_DELEGATED',
+    LANDLORD_ORDER_PAYMENT_SUCCESS      : 'LANDLORD_ORDER_PAYMENT_SUCCESS',
+    
+    USER_PASSWORD_RESET: 'USER_PASSWORD_RESET'
 };
 
 var _actions = {
     trigger: trigger,
-    save: save
+    save: save,
+    NOTIFICATION:NOTIFICATION,
+    init: (_EmailHandler) => EmailHandler = _EmailHandler
 };
 Object.keys(NOTIFICATION).forEach(KEY => {
     _actions[KEY] = (data, cb) => trigger(KEY, data, cb);
 });
 
-module.exports = {
-    NOTIFICATION: NOTIFICATION,
-    actions: _actions,
-    init: (_EmailHandler) => EmailHandler = _EmailHandler
-};
+module.exports = _actions;
 
-function LogSave(msg, type) {
+function LogSave(msg, type, data) {
     Log.save({
         message: msg,
-        type: type || 'error'
+        type: type || 'error',
+        data: data
     });
 }
 
@@ -68,17 +75,17 @@ function trigger(name, data, cb) {
 function save(data, cb) {
     var _user = data._user;
     var _userID = _user && _user.id || _user;
-    if (!_user) {
-        LogSave('notification-save user-not-found');
-        if (!cb) return;
-        else return cb("notification-save user-not-found");
+    if (!_userID) {
+        LogSave('notification-save user-not-found', 'error', data);
+        if (cb) cb("notification-save user-not-found");
+        return;
     }
 
     //data: html,from,to,subject
     UserNotifications.get({
         _user: _userID
     }, (err, _config) => {
-        if (err) return LogSave('UserNotifications getById fail for user ' + _user.email);
+        if (err) return LogSave('UserNotifications getById fail for user ' + _user.email, 'error', err);
         if (!_config) {
             //dblog("UserNotifications not found for " + _user.email + '.', 'info');
             UserNotifications.create({

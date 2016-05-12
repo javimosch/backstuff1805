@@ -20,13 +20,14 @@ exports.getFile = (file) => readFileSync(file,undefined, false);
 
 
 //routing
-function adminUrl(join) {
+function adminUrl(join, angularRoute) {
+    var angularRoute = angularRoute || true;
     console.log('Using adminURL VAR: '+ process.env.adminURL);
     var path = process.env.adminURL || 'http://localhost:3000/admin#';
     if(!process.env.adminURL){
         console.log('process.env.adminURL not found. Using '+path);
     }
-    var url = path + '/' + join;
+    var url = path + (angularRoute?'#/':'') +  join;
     url = url.replace('//', '/');
     url = url.replace(':/','://');
     return url;

@@ -1,26 +1,24 @@
-var mongoose = require('./db').mongoose;
+var mongoose = require('../model/db').mongoose;
 var moment = require('moment');
-var promise = require('./utils').promise;
+var promise = require('../model/utils').promise;
 var _ = require('lodash');
 var generatePassword = require("password-maker");
-var validate = require('./validator').validate;
-var handleMissingKeys = require('./validator').handleMissingKeys;
+var validate = require('../model/validator').validate;
+var handleMissingKeys = require('../model/validator').handleMissingKeys;
 //var ClientActions = require('./handlers.client').actions;
 
 var Order = mongoose.model('Order');
-var Log = require('./handler.actions').create('Log');
-var User = require('./handler.actions').create('User');
-var actions = require('./handler.actions').create('Order');
-var UserAction = require('./handlers.user').actions;
+var Log = require('../model/db.actions').create('Log');
+var User = require('../model/db.actions').create('User');
+var actions = require('../model/db.actions').create('Order');
+var UserAction = require('./ctrl.user');
 
 //var PaymentAction = require('./handlers/payment').actions;
-var stripe = require('./stripeService').stripe;
-var payment = require('./stripeService').actions;
-
-var email = require('./handlers.email').actions;
-
-var Notif = require('../actions/notification.actions').actions;
-var NOTIFICATION = require('../actions/notification.actions').NOTIFICATION;
+var payment = require('./ctrl.payment');
+var stripe = payment.stripe;
+var email = require('./ctrl.email');
+var Notif = require('./ctrl.notification');
+var NOTIFICATION = Notif.NOTIFICATION;
 
 var saveKeys = ['_client', '_diag', 'start', 'end', 'diags'
 
@@ -113,7 +111,17 @@ function pay(data, cb) {
                     }
                     _order.save((err, r) => {
                         if (err) return cb(err, r);
-                        notifyPaymentSuccess(_order);
+                        
+                        Order.get({
+                            _id:_order._id,
+                            _populate:{
+                                _client:'email firstName lastName companyName cellPhone',
+                                _diag:"email firstName lastName"
+                            }
+                        },()=>{
+                            notifyPaymentSuccess(_order);
+                        });
+                        
                         _success();
                     });
                 });
@@ -158,27 +166,39 @@ function notifyPaymentSuccess(_order) {
     UserAction.get({
         _id: _order._client._id || _order._client
     }, (_err, _client) => {
-        _notify(_client, _order);
+        Notif.trigger(NOTIFICATION.CLIENT_ORDER_PAYMENT_SUCCESS, {
+            _user: _client,
+            _order: _order
+        });
+
+        if (_order.landLordEmail) {
+            Notif.trigger(NOTIFICATION.LANDLORD_ORDER_PAYMENT_SUCCESS, {
+                _user: _client,
+                _order: _order
+            });
+        }
+
     });
     UserAction.get({
         _id: _order._diag._id || _order._diag
     }, (_err, _diag) => {
-        _notify(_diag, _order);
+        Notif.trigger(NOTIFICATION.DIAG_ORDER_RDV_CONFIRMED, {
+            _user: _diag,
+            _order: _order
+        });
     });
     UserAction.getAll({
         userType: 'admin'
     }, (_err, _admins) => {
         _admins.forEach((_admin) => {
-            _notify(_admin, _order);
+            Notif.trigger(NOTIFICATION.DIAGS_PAYMENT_SUCCESS_ADMIN, {
+                _user: _admin,
+                _order: _order
+            });
         })
     });
 
-    function _notify(_user, _order) {
-        Notif.trigger(NOTIFICATION.ORDER_PAYMENT_SUCCESS, {
-            _user: _user,
-            _order: _order
-        });
-    }
+
 }
 
 function syncStripe(data, cb) {
@@ -324,21 +344,24 @@ function notifyClientOrderCreation(_order) {
                 Notif.trigger(NOTIFICATION.DIAGS_CLIENT_ORDER_CREATED, {
                     _user: _client,
                     _order: _order
-                },function(err,r){
-                    if(err){
-                        LogSave("Order creation notification email send fail. The user is "+_client.email);
+                }, function(err, r) {
+                    if (err) {
+                        LogSave("Order creation notification email send fail. The user is " + _client.email);
                         actions.log('async:notifyClientOrderCreation:failed');
-                    }else{
-                        actions.log('async:notifyClientOrderCreation:success',_client.email);
+                    }
+                    else {
+                        actions.log('async:notifyClientOrderCreation:success', _client.email);
                         _order.info.clientNotified = true;
                         _order.save();
                     }
                 });
             });
-        }else{
+        }
+        else {
             actions.log('async:notifyClientOrderCreation:already-notified');
         }
-    }else{
+    }
+    else {
         actions.log('async:notifyClientOrderCreation:order-info-undefined');
     }
 }
@@ -511,7 +534,7 @@ function saveWithEmail(data, cb) {
 
 
 
-exports.actions = {
+module.exports = {
     //custom
     save: save,
     saveWithEmail: saveWithEmail,

@@ -7,9 +7,9 @@ var path = require("path");
 var inspect = require('util').inspect;
 var fs = require('fs');
 
-require('./helpers/db');
-var configureRoutes = require('./helpers/handle.routes').configure;
-var configureProgrammedTasks = require('./helpers/programmedTasks').configure;
+require('./model/db');
+var configureRoutes = require('./model/app.routes').configure;
+var configureProgrammedTasks = require('./model/programmedTasks').configure;
 
 var app = express();
 
@@ -119,6 +119,8 @@ app.use(cors({
 var config = JSON.parse(fs.readFileSync(process.cwd()+'/package.json'));
 var message = 'Backstuff runing version '+config.version+'!';
 console.log(message);
+
+console.log('adminURL'+process.env.adminURL);
 
 app.get('/', function (req, res) {
   res.json({messsage:message,support:config.author});

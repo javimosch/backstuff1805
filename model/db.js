@@ -1,8 +1,11 @@
 require('es6-promise').polyfill();
 var mongoose = require('mongoose');
 var mongoosePaginate = require('mongoose-paginate');
-var configureGridFS = require('./db.gridfs').configure;
-var configureGridFSActions = require('./db.gridfs').configureActions;
+var configureGridFS = require('../controllers/ctrl.file').configure;
+
+console.log(configureGridFS);
+
+var configureGridFSActions = require('../controllers/ctrl.file').configureActions;
 var Schema = mongoose.Schema;
 var LOCAL = process.env.LOCAL && process.env.LOCAL.toString() == '1' || false;
 var models = {};
@@ -430,10 +433,7 @@ model('Order', {
     },
     obs: String,
     notifications: {
-        type: [{
-            type: Schema.Types.ObjectId,
-            ref: 'Notification'
-        }],
+        type: {},
         default: []
     },
     start: {

@@ -1,19 +1,19 @@
-var mongoose = require('./db').mongoose;
+var mongoose = require('../model/db').mongoose;
 var generatePassword = require("password-maker");
 //var User = mongoose.model('User');
-var promise = require('./utils').promise;
-var validate = require('./validator').validate;
-var handleMissingKeys = require('./validator').handleMissingKeys;
-var actions = require('./handler.actions').create('User');
-var Log = require('./handler.actions').create('Log');
-var Order = require('./handler.actions').create('Order');
-var Balance = require('./handler.actions').create('Balance');
-var BalanceItem = require('./handler.actions').create('BalanceItem');
+var promise = require('../model/utils').promise;
+var validate = require('../model/validator').validate;
+var handleMissingKeys = require('../model/validator').handleMissingKeys;
+var actions = require('../model/db.actions').create('User');
+var Log = require('../model/db.actions').create('Log');
+var Order = require('../model/db.actions').create('Order');
+var Balance = require('../model/db.actions').create('Balance');
+var BalanceItem = require('../model/db.actions').create('BalanceItem');
 //var email = require('./handlers.email').actions;
 var _ = require('lodash');
 var moment = require('moment');
-var Notif = require('../actions/notification.actions').actions;
-var NOTIFICATION = require('../actions/notification.actions').NOTIFICATION;
+var Notif = require('./ctrl.notification');
+var NOTIFICATION = Notif.NOTIFICATION;
 //User.methods.name = ()=>{return };
 
 function balance(data, cb) {
@@ -184,13 +184,13 @@ function save(data, cb) {
         var notify = null;
         switch (_user.userType) {
             case 'admin':
-                notify = NOTIFICATION.ADMIN_NEW_ACCOUNT;
+                notify = NOTIFICATION.ADMIN_ADMIN_ACCOUNT_CREATED;
                 break;
-            case 'diag':
-                notify = NOTIFICATION.DIAG_NEW_ACCOUNT;
-                break;
+            //case 'diag':
+             //   notify = NOTIFICATION.DIAG_NEW_ACCOUNT;
+              //  break;
             case 'client':
-                notify = NOTIFICATION.CLIENT_NEW_ACCOUNT;
+                notify = NOTIFICATION.CLIENT_CLIENT_NEW_ACCOUNT;
                 break;
         }
         if (notify) {
@@ -332,7 +332,7 @@ function passwordReset(data, cb) {
                 _user.password = generatePassword(8);
                 _user.save();
 
-                Notif.trigger('PASSWORD_RESET',_user, (err, r) => {
+                Notif.trigger('USER_PASSWORD_RESET',_user, (err, r) => {
                     return cb(err, r);
                 })
 
@@ -342,7 +342,7 @@ function passwordReset(data, cb) {
     });
 }
 
-exports.actions = {
+module.exports = {
     //custom
     balance: balance,
     save: save,
@@ -366,21 +366,3 @@ exports.actions = {
     create: create,
     log: actions.log
 };
-
-exports.routes = (app) => {
-    /*
-    app.post('/user/createClient', (req, res) => createClient(req.body, actions.result(res)));
-    app.post('/user/existsById', (req, res) => actions.existsById(req.body, actions.result(res)));
-    app.post('/user/existsByField', (req, res) => actions.existsByField(req.body, actions.result(res)));
-    app.post('/user/createUpdate', (req, res) => actions.createUpdate(req.body, actions.result(res)));
-    app.post('/user/create', (req, res) => create(req.body, actions.result(res)));
-    app.post('/user/find', (req, res) => actions.find(req.body, actions.result(res)));
-    app.post('/user/login', (req, res) => login(req.body, actions.result(res)));
-    app.post('/user/save', (req, res) => save(req.body, actions.result(res)));
-    app.post('/user/get', (req, res) => actions.get(req.body, actions.result(res)));
-    app.post('/user/getAll', (req, res) => actions.getAll(req.body, actions.result(res)));
-    app.post('/user/remove', (req, res) => actions.remove(req.body, actions.result(res)));
-    app.post('/user/removeAll', (req, res) => actions.removeAll(req.body, actions.result(res)));
-    */
-    actions.log('routes-user-ok');
-}

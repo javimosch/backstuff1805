@@ -16,10 +16,10 @@ var actions = {
 
 var EXPORT_ACTIONS = {
     NEW_CONTACT_FORM_MESSAGE: NEW_CONTACT_FORM_MESSAGE,
-    NEW_CONTACT_FORM_MESSAGE: NEW_CONTACT_FORM_MESSAGE,
     DIPLOME_EXPIRATION: DIPLOME_EXPIRATION,
     CLIENT_NEW_ACCOUNT: CLIENT_NEW_ACCOUNT,
-    DIAG_NEW_ACCOUNT: DIAG_NEW_ACCOUNT,
+    DIAGS_DIAG_ACCOUNT_ACTIVATED:DIAGS_DIAG_ACCOUNT_ACTIVATED,
+    DIAGS_DIAG_ACCOUNT_CREATED: DIAGS_DIAG_ACCOUNT_CREATED,
     ADMIN_NEW_ACCOUNT: ADMIN_NEW_ACCOUNT,
     ORDER_CREATED: ORDER_CREATED,
     DIAGS_CLIENT_ORDER_CREATED:DIAGS_CLIENT_ORDER_CREATED,
@@ -248,7 +248,7 @@ function DIAGS_CLIENT_ORDER_CREATED(data, cb) {
     var _user = data._user;
     var _order = data._order;
     send({
-        __notificationType: data.__notificationType,
+        __notificationType: NOTIFICATION.DIAGS_CLIENT_ORDER_CREATED,
         _user: _user,
         to: _user.email,
         subject: "Bienvenue sur Diagnostical",
@@ -376,19 +376,21 @@ function ORDER_PAYMENT_SUCCESS(data, cb) {
 }
 
 
-function DIAG_NEW_ACCOUNT(data, cb) {
-    var _user = data;
-    actions.log('DIAG_NEW_ACCOUNT=' + JSON.stringify(_user));
+function DIAGS_DIAG_ACCOUNT_CREATED(data, cb) {
+    var _user = data._user;
+    actions.log('DIAGS_DIAG_ACCOUNT_CREATED=' + JSON.stringify(_user));
     send({
-        __notificationType: NOTIFICATION.DIAG_NEW_ACCOUNT,
+        __notificationType: NOTIFICATION.DIAGS_DIAG_ACCOUNT_CREATED,
         _user: _user,
-        to: _user.email,
-        subject: "New Diag Account",
-        templateName: 'diag.new.account',
+        to: data.adminEmail,
+        subject: "Nouveau Diagnostiqueur",
+        templateName: 'diags.diag-account-created',
         templateReplace: {
-            '$NAME': _user.firstName || _user.email,
-            '$PASSWORD': _user.password || '[Contact support for the password]',
-            '$URL': process.env.adminURL || 'http://localhost:3000/admin?email=' + _user.email + '&k=' + btoa(_user.password)
+            '$EMAIL': _user.firstName,
+            '$FIRSTNAME': _user.firstName,
+            '$LASTNAME': _user.lastName,
+            '$MOBILE': _user.cellPhone,
+            '$EDIT_URL': adminUrl('/diags/edit/' + _user._id),
         },
         cb: cb
     });
@@ -419,7 +421,24 @@ function dblog(msg, type) {
     });
 }
 
-
+function DIAGS_DIAG_ACCOUNT_ACTIVATED(data,cb){
+    var _user = data;
+    actions.log('DIAGS_DIAG_ACCOUNT_ACTIVATED=' + JSON.stringify(_user));
+    actions.log('DIAGS_DIAG_ACCOUNT_ACTIVATED:NOTIFICATION=' + JSON.stringify(NOTIFICATION));
+    send({
+        __notificationType: NOTIFICATION.DIAGS_DIAG_ACCOUNT_ACTIVATED,
+        _user: _user,
+        to: _user.email,
+        subject: "Vous êtes Diagnostiqueur sur Diagnostical !",
+        templateName: 'diags.diag-account-activated',
+        templateReplace: {
+            '$FIRSTNAME': _user.firstName,
+            '$LASTNAME': _user.lastName,
+            '$BACKOFFICE_URL': process.env.adminURL || 'http://localhost:3000/admin?email=' + _user.email + '&k=' + btoa(_user.password)
+        },
+        cb: cb
+    });
+}
 
 function CLIENT_NEW_ACCOUNT(data, cb) {
     var _user = data;
@@ -429,12 +448,12 @@ function CLIENT_NEW_ACCOUNT(data, cb) {
         __notificationType: NOTIFICATION.CLIENT_NEW_ACCOUNT,
         _user: _user,
         to: _user.email,
-        subject: "New Client Account",
+        subject: "Bienvenue sur Diagnostical",
         templateName: 'client.new.account',
         templateReplace: {
-            '$NAME': _user.firstName || _user.email,
-            '$PASSWORD': _user.password || '[Contact support for the password]',
-            '$URL': process.env.adminURL || 'http://localhost:3000/admin?email=' + _user.email + '&k=' + btoa(_user.password)
+            '$FIRSTNAME': _user.firstName,
+            '$LASTNAME': _user.lastName,
+            '$BACKOFFICE_URL': process.env.adminURL || 'http://localhost:3000/admin?email=' + _user.email + '&k=' + btoa(_user.password)
         },
         cb: cb
     });

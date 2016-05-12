@@ -26,7 +26,7 @@ function adminUrl(join) {
     if(!process.env.adminURL){
         console.log('process.env.adminURL not found. Using '+path);
     }
-    var url = path + join;
+    var url = path + '/' + join;
     url = url.replace('//', '/');
     url = url.replace(':/','://');
     return url;

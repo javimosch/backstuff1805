@@ -132,12 +132,15 @@ exports.create = function(modelName, m) {
             });
             //
             function rta(err, r) {
-                if (err) return error(err, r);
-                if (!cb) return;
-                if (err) return cb(err, r);
-                else then(err, r);
-                log('createUpdate:rta' + JSON.stringify(r));
-                return cb(err, r);
+                if (err) {
+                    error(err, r);
+                    if (cb) return cb(err, r);
+                }
+                else {
+                    then(err, r);
+                    log('createUpdate:rta' + JSON.stringify(r));
+                    return cb(err, r);
+                }
             }
         });
 

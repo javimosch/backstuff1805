@@ -18,9 +18,12 @@ var actions = {
 
 var NOTIFICATION = {
     ORDER_CREATED: 'ORDER_CREATED',
-    DIAGS_CLIENT_ORDER_CREATED:'DIAGS_CLIENT_ORDER_CREATED',
+    
+    DIAGS_CLIENT_ORDER_CREATED: 'DIAGS_CLIENT_ORDER_CREATED',
+    DIAGS_DIAG_ACCOUNT_ACTIVATED:'DIAGS_DIAG_ACCOUNT_ACTIVATED',
+    DIAGS_DIAG_ACCOUNT_CREATED: 'DIAGS_DIAG_ACCOUNT_CREATED',
+    
     CLIENT_NEW_ACCOUNT: 'CLIENT_NEW_ACCOUNT',
-    DIAG_NEW_ACCOUNT: 'DIAG_NEW_ACCOUNT',
     ADMIN_NEW_ACCOUNT: 'ADMIN_NEW_ACCOUNT',
     NEW_CONTACT_FORM_MESSAGE: 'NEW_CONTACT_FORM_MESSAGE', //notif_newContactFormMessage,
     PAYMENT_LINK: 'PAYMENT_LINK',
@@ -64,7 +67,7 @@ function trigger(name, data, cb) {
 
 function save(data, cb) {
     var _user = data._user;
-    var _user = _user && _user.id || _user;
+    var _userID = _user && _user.id || _user;
     if (!_user) {
         LogSave('notification-save user-not-found');
         if (!cb) return;
@@ -73,13 +76,13 @@ function save(data, cb) {
 
     //data: html,from,to,subject
     UserNotifications.get({
-        _user: _user
+        _user: _userID
     }, (err, _config) => {
         if (err) return LogSave('UserNotifications getById fail for user ' + _user.email);
         if (!_config) {
             //dblog("UserNotifications not found for " + _user.email + '.', 'info');
             UserNotifications.create({
-                _user: _user._id
+                _user: _userID
             }, (err, _config) => {
                 if (err) return LogSave('UserNotifications create fail for user ' + _user.email);
                 saveNotificationOn(_config);
@@ -92,14 +95,14 @@ function save(data, cb) {
 
     function saveNotificationOn(_config) {
         Notification.create({
-            _config: _config,
-            _user: _user._id,
+            _config: _config.id,
+            _user: _userID,
             type: data.type || 'no-type',
             to: data.to || 'not-specified',
             subject: data.subject || 'not specified',
             contents: data.html || ''
         }, (err, _notification) => {
-            if (err) return LogSave('saveNotification fail when creating a notification for user ' + _user.email);
+            if (err) return LogSave('saveNotification fail when creating a notification for user ' + _user.email + ' : ' + JSON.stringify(err));
             if (cb) cb(_notification);
 
             _config.notifications.push(_notification);

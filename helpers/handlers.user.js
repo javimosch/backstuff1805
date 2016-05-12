@@ -199,23 +199,24 @@ function save(data, cb) {
     });
 }
 
+function LogSave(msg, type,data) {
+    Log.save({
+        message: msg,
+        type: type,
+        data:data
+    });
+}
+
 function handleNewAccount(_user, err, r) {
-    if(err) return Log.save(err,'error');
-    
-    actions.log('handleNewAccount:start '+JSON.stringify(r));
-    
-    if(!r) return Log.Save("Notify returns empty response",'error');
-    
-    if (r.ok) {
-        actions.log('handleNewAccount:'+_user.email + ': new account email sended' + JSON.stringify(r));
+    if(err) return LogSave(err.message,'error',err);
+    if (r && r.ok) {
+        actions.log(_user.email + ':passwordSended');
         _user.passwordSended = true;
-        _user.save((err, r) => {
-            if (!err) actions.log('handleNewAccount:'+ _user.email + ' passwordSended=true');
-        });
+        _user.save();
     }
     else {
-        actions.log('handleNewAccount:'+ _user.email + ' new account email sended failed');
-        actions.log(JSON.stringify(err));
+        actions.log(_user.email + ' passwordSended email fail '+ JSON.stringify(r));
+        LogSave(r.message,'warning',r);
     }
 }
 

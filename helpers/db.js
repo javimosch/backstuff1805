@@ -343,6 +343,10 @@ model('User', {
         type: Boolean,
         default: false
     },
+    notifications: {
+        type: {},
+        default: {}
+    },
 
 
     //CLIENT

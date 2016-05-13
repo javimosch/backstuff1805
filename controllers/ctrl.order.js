@@ -499,7 +499,7 @@ function orderExists(data, cb) {
 //If data has _client, use that client. If not, data requires email and clientType to search or crate a new user on the fly.
 function saveWithEmail(data, cb) {
     actions.log('saveWithEmail=' + JSON.stringify(data));
-    actions.check(data, ['_diag', 'diagStart', 'diagEnd'
+    actions.check(data, ['_diag', 'start', 'end'
 
         , 'diags', 'address', 'price'
     ], (err, r) => {

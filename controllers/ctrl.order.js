@@ -102,7 +102,7 @@ function pay(data, cb) {
                 //Change status to prepaid  (sync)
                 actions.get({
                     _id: data._id
-                }, (err, _order) => {
+                }, (_err, _order) => {
                     if (_order.status == 'delivered') {
                         _order.status = 'completed';
                     }
@@ -111,17 +111,17 @@ function pay(data, cb) {
                     }
                     _order.save((err, r) => {
                         if (err) return cb(err, r);
-                        
-                        Order.get({
-                            _id:_order._id,
-                            _populate:{
-                                _client:'email firstName lastName companyName cellPhone',
-                                _diag:"email firstName lastName"
+
+                        actions.get({
+                            _id: _order._id,
+                            _populate: {
+                                _client: 'email firstName lastName companyName cellPhone',
+                                _diag: "email firstName lastName"
                             }
-                        },()=>{
+                        }, () => {
                             notifyPaymentSuccess(_order);
                         });
-                        
+
                         _success();
                     });
                 });
@@ -162,6 +162,18 @@ function orderHasPayment(data, cb) {
 }
 
 function notifyPaymentSuccess(_order) {
+    if (!_order.___ready) return actions.get({
+        _id: _order._id,
+        _populate: {
+            _client: 'email firstName lastName companyName cellPhone',
+            _diag: "email firstName lastName"
+        }
+    }, () => {
+        _order.___ready=true;
+        return notifyPaymentSuccess(_order);
+    });
+
+
     actions.log('notifyPaymentSuccess:start=' + JSON.stringify(_order));
     UserAction.get({
         _id: _order._client._id || _order._client
@@ -182,7 +194,7 @@ function notifyPaymentSuccess(_order) {
     UserAction.get({
         _id: _order._diag._id || _order._diag
     }, (_err, _diag) => {
-        Notif.trigger(NOTIFICATION.DIAG_ORDER_RDV_CONFIRMED, {
+        Notif.trigger(NOTIFICATION.DIAG_RDV_CONFIRMED, {
             _user: _diag,
             _order: _order
         });
@@ -191,7 +203,7 @@ function notifyPaymentSuccess(_order) {
         userType: 'admin'
     }, (_err, _admins) => {
         _admins.forEach((_admin) => {
-            Notif.trigger(NOTIFICATION.DIAGS_PAYMENT_SUCCESS_ADMIN, {
+            Notif.trigger(NOTIFICATION.ADMIN_ORDER_PAYMENT_SUCCESS, {
                 _user: _admin,
                 _order: _order
             });
@@ -341,6 +353,8 @@ function notifyClientOrderCreation(_order) {
                 _id: _order._client._id || _order._client
             }, (_err, _client) => {
                 _client._orders.push(_order.id);
+
+                /*
                 Notif.trigger(NOTIFICATION.DIAGS_CLIENT_ORDER_CREATED, {
                     _user: _client,
                     _order: _order
@@ -354,7 +368,8 @@ function notifyClientOrderCreation(_order) {
                         _order.info.clientNotified = true;
                         _order.save();
                     }
-                });
+                });*/
+
             });
         }
         else {
@@ -383,7 +398,12 @@ function save(data, cb) {
     actions.createUpdate(data, (err, r) => {
         if (err) return cb(err, r);
 
-        notifyClientOrderCreation(r);
+        //notifyClientOrderCreation(r);
+
+        if (r.status === 'prepaid') {
+            notifyPaymentSuccess(r);
+        }
+
 
         cb(err, r);
     }, {}, saveKeys).on('created', (_err, _order) => {
@@ -394,11 +414,11 @@ function save(data, cb) {
         }, (_err, _client) => {
             _client._orders.push(_order.id);
 
-
-            Notif.trigger(NOTIFICATION.DIAGS_CLIENT_ORDER_CREATED, {
-                _user: _client,
-                _order: _order
-            });
+            /*
+                        Notif.trigger(NOTIFICATION.DIAGS_CLIENT_ORDER_CREATED, {
+                            _user: _client,
+                            _order: _order
+                        });*/
 
         });
         UserAction.get({
@@ -406,10 +426,11 @@ function save(data, cb) {
         }, (_err, _diag) => {
             _diag._orders.push(_order.id);
 
-            Notif.trigger(NOTIFICATION.ORDER_CREATED, {
-                _user: _diag,
-                _order: _order
-            });
+            /*
+                        Notif.trigger(NOTIFICATION.ORDER_CREATED, {
+                            _user: _diag,
+                            _order: _order
+                        });*/
 
         });
 

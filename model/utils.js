@@ -18,6 +18,9 @@ function readFileSync(file, encoding, json) {
 exports.getJSON = (file) => readFileSync(file,undefined, true);
 exports.getFile = (file) => readFileSync(file,undefined, false);
 
+function replaceAll(word,search, replacement) {
+    return word.replace(new RegExp(search, 'g'), replacement);
+};
 
 //routing
 function adminUrl(join, angularRoute) {
@@ -28,8 +31,8 @@ function adminUrl(join, angularRoute) {
         console.log('process.env.adminURL not found. Using '+path);
     }
     var url = path + (angularRoute?'#/':'') +  join;
-    url = url.replace('//', '/');
-    url = url.replace(':/','://');
+    url = replaceAll(url,'//', '/');
+    url = replaceAll(url,':/','://');
     return url;
 }
 exports.adminUrl = adminUrl;

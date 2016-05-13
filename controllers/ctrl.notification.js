@@ -35,7 +35,7 @@ var NOTIFICATION = {
     DIAG_NEW_RDV                        : 'DIAG_NEW_RDV',
     DIAG_RDV_CONFIRMED                  : 'DIAG_RDV_CONFIRMED',
 
-    LANDLORD_ORDER_DELEGATED            : 'LANDLORD_ORDER_DELEGATED',
+    LANDLORD_ORDER_PAYMENT_DELEGATED    : 'LANDLORD_ORDER_PAYMENT_DELEGATED',
     LANDLORD_ORDER_PAYMENT_SUCCESS      : 'LANDLORD_ORDER_PAYMENT_SUCCESS',
     
     USER_PASSWORD_RESET: 'USER_PASSWORD_RESET'
@@ -63,8 +63,11 @@ function LogSave(msg, type, data) {
 
 function trigger(name, data, cb) {
     actions.log('trigger=' + JSON.stringify(data));
-    if (!name) return cb("name required");
-    if (!NOTIFICATION[name]) return cb("trigger notification not found: " + name);
+    if (!name) return cb && cb("name required");
+    if (!NOTIFICATION[name]) {
+        LogSave('Notification trigger name not found: '+name,'error',data);
+        return cb && cb("trigger notification not found: " + name);
+    }
     actions.log('trigger:routing-' + name + '=' + JSON.stringify(data));
     data.__notificationType = name;
     return EmailHandler[name](data, cb);

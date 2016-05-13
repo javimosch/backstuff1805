@@ -191,7 +191,7 @@ function send(opt, resCb) {
 }
 
 function time(d) {
-    return moment(d).format('HH:mm');
+    return moment(d).format('HH[h]mm');
 }
 
 function dateTime(d) {
@@ -252,7 +252,7 @@ function ADMIN_DIPLOME_EXPIRATION(data, cb) {
         templateReplace: {
             '$DIAG_NAME': data._diag.firstName,
             '$DIAG_MOBILE': data._diag.cellPhone,
-            '$DIAG_DIPLOME_EXPIRATION_DATE': data._info.expirationDate,
+            '$DIAG_DIPLOME_EXPIRATION_DATE': dateTime(data._info.expirationDate),
             '$DIAG_DIPLOME_FILENAME': data.filename,
             '$DIAG_EDIT_URL': adminUrl('/diags/edit/' + data._diag._id),
         },
@@ -375,9 +375,9 @@ function DIAG_RDV_CONFIRMED(data, cb) {
         var _subject = 'RDV confirmé: ' + data._order.address + '/' + dateTime(data._order.start);
         return DIAGS_USER_ORDER_CUSTOM(data, (err, r) => {
             data._order.notifications.DIAG_RDV_CONFIRMED = true;
-            User.update(data._order);
-            cb(err, r);
-        }, _subject, 'DIAG_RDV_CONFIRMED', data._diag.email, NOTIFICATION.DIAG_RDV_CONFIRMED);
+            Order.update(data._order);
+            cb && cb(err, r);
+        }, _subject, 'DIAG_RDV_CONFIRMED', data._user.email, NOTIFICATION.DIAG_RDV_CONFIRMED);
     }
 }
 
@@ -387,9 +387,9 @@ function DIAG_NEW_RDV(data, cb) {
         var _subject = 'Nouveau RDV : ' + data._order.address + '/' + dateTime(data._order.start);
         return DIAGS_USER_ORDER_CUSTOM(data, (err, r) => {
             data._order.notifications.DIAG_NEW_RDV = true;
-            User.update(data._order);
-            cb(err, r);
-        }, _subject, 'DIAG_NEW_RDV', data._diag.email, NOTIFICATION.DIAG_NEW_RDV);
+            Order.update(data._order);
+            cb && cb(err, r);
+        }, _subject, 'DIAG_NEW_RDV', data._user.email, NOTIFICATION.DIAG_NEW_RDV);
     }
 }
 
@@ -424,18 +424,37 @@ function CLIENT_ORDER_DELEGATED(data, cb) {
 
 function CLIENT_ORDER_PAYMENT_SUCCESS(data, cb) {
     var _subject = 'RDV en attente de paiement: ' + data._order.address + '/' + dateTime(data._order.start);
-    return DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, 'CLIENT_ORDER_PAYMENT_SUCCESS', data._user.email, NOTIFICATION.CLIENT_ORDER_PAYMENT_SUCCESS);
+    if (data._order.notifications.CLIENT_ORDER_PAYMENT_SUCCESS !== true) {
+        return DIAGS_USER_ORDER_CUSTOM(data, (err, r) => {
+            data._order.notifications.CLIENT_ORDER_PAYMENT_SUCCESS = true;
+            Order.update(data._order);
+            cb && cb(err, r);
+        }, _subject, 'CLIENT_ORDER_PAYMENT_SUCCESS', data._order.landLordEmail, NOTIFICATION.CLIENT_ORDER_PAYMENT_SUCCESS);
+    }
 }
 
 
 function LANDLORD_ORDER_PAYMENT_DELEGATED(data, cb) {
     var _subject = 'Diagnostic Réservé en attente de paiement';
-    return DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, 'LANDLORD_ORDER_PAYMENT_DELEGATED', data._user.email, NOTIFICATION.LANDLORD_ORDER_PAYMENT_DELEGATED);
+    data._order.notifications = data._order.notifications || {};
+    if (data._order.notifications.LANDLORD_ORDER_PAYMENT_DELEGATED !== true) {
+        return DIAGS_USER_ORDER_CUSTOM(data, (err, r) => {
+            data._order.notifications.LANDLORD_ORDER_PAYMENT_DELEGATED = true;
+            Order.update(data._order);
+            cb && cb(err, r);
+        }, _subject, 'LANDLORD_ORDER_PAYMENT_DELEGATED', data._order.landLordEmail, NOTIFICATION.LANDLORD_ORDER_PAYMENT_DELEGATED);
+    }
 }
 
 function LANDLORD_ORDER_PAYMENT_SUCCESS(data, cb) {
     var _subject = 'Rendez-vous confirmé';
-    return DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, 'LANDLORD_ORDER_PAYMENT_SUCCESS', data._user.landLordEmail, NOTIFICATION.LANDLORD_ORDER_PAYMENT_SUCCESS);
+    if (data._order.notifications.LANDLORD_ORDER_PAYMENT_SUCCESS !== true) {
+        return DIAGS_USER_ORDER_CUSTOM(data, (err, r) => {
+            data._order.notifications.LANDLORD_ORDER_PAYMENT_SUCCESS = true;
+            Order.update(data._order);
+            cb && cb(err, r);
+        }, _subject, 'LANDLORD_ORDER_PAYMENT_SUCCESS', data._order.landLordEmail, NOTIFICATION.LANDLORD_ORDER_PAYMENT_SUCCESS);
+    }
 }
 
 function DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, templateName, _to, _type) {
@@ -451,7 +470,7 @@ function DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, templateName, _to, _type) {
         _user: _user,
         to: _to,
         subject: _subject,
-        templateName: 'order.payment.success.' + _user.userType,
+        templateName: templateName,
         templateReplace: {
             '$USER_EMAIL': _user.email,
             '$USER_FIRSTNAME': _user.firstName,
@@ -470,7 +489,7 @@ function DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, templateName, _to, _type) {
             '$LANDLORD_PHONE': _user.landLordPhone,
             '$ORDER_DIAG_LIST': htmlOrderSelectedDiagsList(_order),
             '$ORDER_ADDRESS': _order.address,
-            '$ORDER_KEYS_INFO': _order.keysAddress + ' / ' + _order.keysTimeFrom + ' - ' + _order.keysTimeFrom,
+            '$ORDER_KEYS_INFO': _order.keysAddress + ' / ' + dateTime(_order.keysTimeFrom) + ' - ' + time(_order.keysTimeFrom),
             '$ORDER_OBSERVATION': _order.obs,
             '$ORDER_PRICE_TTC': _order.price,
             '$ORDER_PRICE_HT': _order.priceHT,

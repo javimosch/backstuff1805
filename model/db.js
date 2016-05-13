@@ -434,7 +434,7 @@ model('Order', {
     obs: String,
     notifications: {
         type: {},
-        default: []
+        default: {}
     },
     start: {
         type: Date,
@@ -449,6 +449,26 @@ model('Order', {
         default: 'created'
     },
     price: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    priceHT: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    diagRemunerationHT: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    revenueHT: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    vatRate: {
         type: Number,
         required: true,
         default: 0

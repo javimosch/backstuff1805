@@ -48,7 +48,7 @@ function handler(data, cb) {
                         else {
                             if (moment().diff(moment(info.expirationDate), 'days') < 31) {
                                 if (!_.isUndefined(info.expirationDateNotificationSended) && info.expirationDateNotificationSended === true) {
-                                    console.log(diag.email + ' ' + filename + ' alert already sended.');
+                                    console.log(diag.email + ' ' + filename + ' has expire and alert was already sended.');
                                 }
                                 else {
                                     User.getAll({
@@ -75,17 +75,15 @@ function handler(data, cb) {
 
 function sendEmail(_admin, _diag, _info, _diplomeId) {
 
-    Notif.trigger({
-        name: NOTIFICATION.DIPLOME_EXPIRATION,
-        data: {
-            _admin: _admin,
-            _diag: _diag,
-            _info: _info,
-            filename: _info.filename,
-        }
+    Notif.trigger(NOTIFICATION.ADMIN_DIPLOME_EXPIRATION, {
+        _admin: _admin,
+        _diag: _diag,
+        _info: _info,
+        filename: _info.filename,
+
     }, (_err, r) => {
         if (_err) return dblog(log('Fail when sending alert email to ' + _admin.email));
-        dblog(log('Email sended to ' + _admin.email), 'success');
+        //dblog(log('Email sended to ' + _admin.email), 'success');
         //
         _info.expirationDateNotificationSended = true;
         _diag.diplomesInfo[_diplomeId] = _info;
@@ -100,5 +98,6 @@ function sendEmail(_admin, _diag, _info, _diplomeId) {
 module.exports = {
     name: name,
     interval: 1000 * 60 * 60, //each hour
-    handler: handler
+    handler: handler,
+    startupInterval: true
 };

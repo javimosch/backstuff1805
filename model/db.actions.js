@@ -384,14 +384,16 @@ exports.create = function(modelName, m) {
     function update(data, cb) {
         log('update=' + JSON.stringify(data));
         check(data, ['_id'], (err, r) => {
-            if (err) return cb(err, null);
+            if (err) return cb && cb(err, null);
             var _id = data._id;
             delete data._id;
             Model.update({
                 _id: _id
             }, data, (err, r) => {
+                log('update:ok='+!err+' '+JSON.stringify(err));
                 if (!cb) return;
                 if (err) return cb(err, null);
+                log('update:rta='+JSON.stringify(r));
                 return cb(null, r);
             });
         });

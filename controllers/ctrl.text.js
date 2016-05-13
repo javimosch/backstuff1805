@@ -15,7 +15,7 @@ var actions = {
         console.log(modelName.toUpperCase() + ': ' + m);
     }
 };
-exports.actions = {
+module.exports = {
     reportNotFound: reportNotFound
 };
 

@@ -19,14 +19,24 @@ var tasks = [
 exports.configure = (app) => {
     tasks.forEach((t) => {
 
-        setInterval(() => {
+        function loop() {
             console.log('ProgrammedTask-start: ' + t.name);
             try {
                 t.handler(t, app);
-            } catch (e) {
-            	console.log('ProgrammedTask-exception',e);
             }
+            catch (e) {
+                console.log('ProgrammedTask-exception', e);
+            }
+        }
+
+        setInterval(() => {
+            loop
         }, t.interval);
+        
+        
+        if(t.startupInterval){
+            loop();
+        }
 
     });
 }

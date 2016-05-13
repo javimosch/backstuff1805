@@ -269,7 +269,7 @@ function createClient(data, cb) {
 }
 
 function sendAccountsDetails(_user) {
-    Notif.CLIENT_NEW_ACCOUNT(_user, (err, r) => {
+    Notif.CLIENT_CLIENT_NEW_ACCOUNT(_user, (err, r) => {
         //async (write log on error)
         if (r.ok) {
             actions.log(_user.email + ' new account email sended' + JSON.stringify(r));

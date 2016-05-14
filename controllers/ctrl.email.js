@@ -127,6 +127,7 @@ function send(opt, resCb) {
                     if (process.env.disableMailing === '1') {
                         actions.log('send:mailing-disabled');
                         _notification.sended = true;
+                        _notification.sendedDate = Date.now();
                         Notification.update(_notification, (err, _notification) => {
                             if (err) dblog('notification sended update fail in function send.');
 
@@ -173,6 +174,7 @@ function send(opt, resCb) {
 
             if (!err && _notification) {
                 _notification.sended = true;
+                _notification.sendedDate = Date.now();
                 Notification.update(_notification, (err, _notification) => {
                     if (err) dblog('notification sended update fail in function send.');
 

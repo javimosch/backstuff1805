@@ -110,7 +110,7 @@ function save(data, cb) {
             type: data.type || 'no-type',
             to: data.to || 'not-specified',
             subject: data.subject || 'not specified',
-            contents: data.html || ''
+            contents: data.html || '',
         }, (err, _notification) => {
             if (err) return LogSave('saveNotification fail when creating a notification for user ' + _user.email + ' : ' + JSON.stringify(err));
             if (cb) cb(_notification);

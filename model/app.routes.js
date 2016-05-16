@@ -11,12 +11,26 @@ dbController.register('Payment');
 dbController.register('Stats');
 dbController.register('File');
 dbController.register('Email');
+dbController.register('Pdf');
 var NOTIFICATION = dbController.create("Notification").NOTIFICATION;
 var Log = dbController.create("Log");
 var File = dbController.create('File')
     //
 exports.configure = function(app) {
     //
+    app.get('/ctrl/:controller/:action/:data', function(req, res) {
+        var controller = req.params.controller;
+        var action = req.params.action;
+        var data = req.params.data;
+        var actions = dbController.create(controller);
+        if (!actions[action]) {
+            res.set('Content-Type', 'text/html'); 
+            res.send(new Buffer('<p>Invalid controller'+controller+" action "+action+'</p>'));
+        }else{
+            return actions[action](data, actions.result(res), req, res);
+        }
+    });
+    
     app.post('/ctrl/:controller/:action', function(req, res) {
         var controller = req.params.controller;
         var action = req.params.action;
@@ -46,7 +60,7 @@ exports.configure = function(app) {
             actions.model[action](actions.toRules(data), actions.result(res), req, res);
         }
 
-        console.log('routes:ctrl:end');
+        //console.log('routes:ctrl:end');
     });
 
     app.post('/File/save/', (req, res) => {
@@ -62,7 +76,7 @@ exports.configure = function(app) {
             data.stream.pipe(res);
         });
     });
-
+    
 
     console.log('ROUTING-OK');
 };

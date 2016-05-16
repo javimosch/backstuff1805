@@ -83,8 +83,10 @@ exports.create = function(modelName, m) {
                     });
                 }
                 matchData = matchData || {};
+                
+                //log('createUpdate:matchData=' + JSON.stringify(requiredKeys));
 
-                if (matchData.length) {
+                if (matchData.length && typeof matchData !== 'string') {
                     //an array of string that represents the fields to match
                     if (matchData.filter(k => data[k] === undefined).length == 0) {
                         var _matchData = {}

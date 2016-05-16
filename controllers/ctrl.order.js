@@ -109,6 +109,9 @@ function pay(data, cb) {
                     else {
                         _order.status = 'prepaid';
                     }
+                    
+                    _order.paidAt = Date.now();
+                    
                     _order.save((err, r) => {
                         if (err) return cb(err, r);
 

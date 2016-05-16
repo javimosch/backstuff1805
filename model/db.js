@@ -2,9 +2,6 @@ require('es6-promise').polyfill();
 var mongoose = require('mongoose');
 var mongoosePaginate = require('mongoose-paginate');
 var configureGridFS = require('../controllers/ctrl.file').configure;
-
-console.log(configureGridFS);
-
 var configureGridFSActions = require('../controllers/ctrl.file').configureActions;
 var Schema = mongoose.Schema;
 var LOCAL = process.env.LOCAL && process.env.LOCAL.toString() == '1' || false;
@@ -105,6 +102,8 @@ model('Settings', {
 
 require('../schemas/schema.category').configure(model);
 require('../schemas/schema.text').configure(model);
+
+model('Pdf',require('../schemas/schema.pdf').def);
 
 model('Log', {
     type: {
@@ -498,6 +497,10 @@ model('Order', {
         default: false
     },
 
+    paidAt:{
+      type:Date,
+      default:null //date were the order was paid
+    },
     createdAt: {
         type: Date,
         default: Date.now

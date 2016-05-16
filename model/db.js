@@ -472,6 +472,11 @@ model('Order', {
         required: true,
         default: 0
     },
+    vatPrice: {
+        type: Number,
+        required: true,
+        default: 0
+    },
     //    time: String, //estimated time.
     fastDiagComm: {
         type: Number,

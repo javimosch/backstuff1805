@@ -1,3 +1,4 @@
+var ctrl = require('../model/db.controller').create;
 var Order = require('../model/db.actions').create('Order');
 var User = require('../model/db.actions').create('User');
 var Log = require('../model/db.actions').create('Log');
@@ -17,28 +18,28 @@ var actions = {
 
 var EXPORT_ACTIONS = {
 
-    ADMIN_ADMIN_ACCOUNT_CREATED             : ADMIN_ADMIN_ACCOUNT_CREATED,
-    ADMIN_CLIENT_ACCOUNT_CREATED            : ADMIN_CLIENT_ACCOUNT_CREATED,
-    ADMIN_DIAG_ACCOUNT_CREATED              : ADMIN_DIAG_ACCOUNT_CREATED,
-    ADMIN_DIPLOME_EXPIRATION                : ADMIN_DIPLOME_EXPIRATION,
-    ADMIN_NEW_CONTACT_FORM_MESSAGE          : ADMIN_NEW_CONTACT_FORM_MESSAGE,
-    ADMIN_ORDER_PAYMENT_DELEGATED           : ADMIN_ORDER_PAYMENT_DELEGATED,
-    ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS     : ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS,
-    ADMIN_ORDER_PAYMENT_SUCCESS             : ADMIN_ORDER_PAYMENT_SUCCESS,
-    
-    CLIENT_CLIENT_NEW_ACCOUNT               : CLIENT_CLIENT_NEW_ACCOUNT,
-    CLIENT_ORDER_DELEGATED                  : CLIENT_ORDER_DELEGATED,
-    CLIENT_ORDER_PAYMENT_SUCCESS            : CLIENT_ORDER_PAYMENT_SUCCESS,
-   
-    DIAG_DIAG_ACCOUNT_CREATED               : DIAG_DIAG_ACCOUNT_CREATED,
-    DIAG_NEW_RDV                            : DIAG_NEW_RDV,
-    DIAG_RDV_CONFIRMED                      : DIAG_RDV_CONFIRMED,
-    
-    LANDLORD_ORDER_PAYMENT_DELEGATED:LANDLORD_ORDER_PAYMENT_DELEGATED,
+    ADMIN_ADMIN_ACCOUNT_CREATED: ADMIN_ADMIN_ACCOUNT_CREATED,
+    ADMIN_CLIENT_ACCOUNT_CREATED: ADMIN_CLIENT_ACCOUNT_CREATED,
+    ADMIN_DIAG_ACCOUNT_CREATED: ADMIN_DIAG_ACCOUNT_CREATED,
+    ADMIN_DIPLOME_EXPIRATION: ADMIN_DIPLOME_EXPIRATION,
+    ADMIN_NEW_CONTACT_FORM_MESSAGE: ADMIN_NEW_CONTACT_FORM_MESSAGE,
+    ADMIN_ORDER_PAYMENT_DELEGATED: ADMIN_ORDER_PAYMENT_DELEGATED,
+    ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS: ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS,
+    ADMIN_ORDER_PAYMENT_SUCCESS: ADMIN_ORDER_PAYMENT_SUCCESS,
+
+    CLIENT_CLIENT_NEW_ACCOUNT: CLIENT_CLIENT_NEW_ACCOUNT,
+    CLIENT_ORDER_DELEGATED: CLIENT_ORDER_DELEGATED,
+    CLIENT_ORDER_PAYMENT_SUCCESS: CLIENT_ORDER_PAYMENT_SUCCESS,
+
+    DIAG_DIAG_ACCOUNT_CREATED: DIAG_DIAG_ACCOUNT_CREATED,
+    DIAG_NEW_RDV: DIAG_NEW_RDV,
+    DIAG_RDV_CONFIRMED: DIAG_RDV_CONFIRMED,
+
+    LANDLORD_ORDER_PAYMENT_DELEGATED: LANDLORD_ORDER_PAYMENT_DELEGATED,
     LANDLORD_ORDER_PAYMENT_SUCCESS: LANDLORD_ORDER_PAYMENT_SUCCESS,
-    
+
     USER_PASSWORD_RESET: USER_PASSWORD_RESET,
-    
+
     send: send, //calling this function directly is deprecated.
     test: () => {
         NotificationHandler.save({
@@ -84,6 +85,7 @@ function send(opt, resCb) {
         }
     }
     var data = {
+        attachment: opt.attachment || null,
         type: opt.__notificationType,
         html: html,
         from: process.env.emailFrom || 'diags-project@startup.com',
@@ -375,7 +377,7 @@ function DIAG_RDV_CONFIRMED(data, cb) {
     data._order.notifications = data._order.notifications || {};
     if (data._order.notifications.DIAG_RDV_CONFIRMED !== true) {
         var _subject = 'RDV confirmé: ' + data._order.address + '/' + dateTime(data._order.start);
-        return DIAGS_USER_ORDER_CUSTOM(data, (err, r) => {
+        return DIAGS_CUSTOM_EMAIL(data, (err, r) => {
             data._order.notifications.DIAG_RDV_CONFIRMED = true;
             Order.update(data._order);
             cb && cb(err, r);
@@ -387,7 +389,7 @@ function DIAG_NEW_RDV(data, cb) {
     data._order.notifications = data._order.notifications || {};
     if (data._order.notifications.DIAG_NEW_RDV !== true) {
         var _subject = 'Nouveau RDV : ' + data._order.address + '/' + dateTime(data._order.start);
-        return DIAGS_USER_ORDER_CUSTOM(data, (err, r) => {
+        return DIAGS_CUSTOM_EMAIL(data, (err, r) => {
             data._order.notifications.DIAG_NEW_RDV = true;
             Order.update(data._order);
             cb && cb(err, r);
@@ -401,7 +403,7 @@ function ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS(data, cb) {
     statsActions.currentMonthTotalRevenueHT({}, (_err, _currentMonthTotalRevenueHT) => {
         data._order.currentMonthTotalRevenueHT = _currentMonthTotalRevenueHT;
         var _subject = 'Paiement confirmé: ' + data._order.address + '/' + dateTime(data._order.start);
-        return DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, 'ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS', data._user.email, NOTIFICATION.ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS);
+        return DIAGS_CUSTOM_EMAIL(data, cb, _subject, 'ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS', data._user.email, NOTIFICATION.ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS);
     });
 }
 
@@ -410,24 +412,24 @@ function ADMIN_ORDER_PAYMENT_SUCCESS(data, cb) {
     statsActions.currentMonthTotalRevenueHT({}, (_err, _currentMonthTotalRevenueHT) => {
         data._order.currentMonthTotalRevenueHT = _currentMonthTotalRevenueHT;
         var _subject = 'Paiement confirmé: ' + data._order.address + '/' + dateTime(data._order.start);
-        return DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, 'ADMIN_ORDER_PAYMENT_SUCCESS', data._user.email, NOTIFICATION.ADMIN_ORDER_PAYMENT_SUCCESS);
+        return DIAGS_CUSTOM_EMAIL(data, cb, _subject, 'ADMIN_ORDER_PAYMENT_SUCCESS', data._user.email, NOTIFICATION.ADMIN_ORDER_PAYMENT_SUCCESS);
     });
 }
 
 function ADMIN_ORDER_PAYMENT_DELEGATED(data, cb) {
-    var _subject = dateTime(data._order.start)  + '/' + data._order.address   + " Paiement Délégué";
-    return DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, 'ADMIN_ORDER_PAYMENT_DELEGATED', data._user.email, NOTIFICATION.ADMIN_ORDER_PAYMENT_DELEGATED);
+    var _subject = dateTime(data._order.start) + '/' + data._order.address + " Paiement Délégué";
+    return DIAGS_CUSTOM_EMAIL(data, cb, _subject, 'ADMIN_ORDER_PAYMENT_DELEGATED', data._user.email, NOTIFICATION.ADMIN_ORDER_PAYMENT_DELEGATED);
 }
 
 function CLIENT_ORDER_DELEGATED(data, cb) {
     var _subject = 'RDV en attente de paiement: ' + data._order.address + '/' + dateTime(data._order.start);
-    return DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, 'CLIENT_ORDER_DELEGATED', data._user.email, NOTIFICATION.CLIENT_ORDER_DELEGATED);
+    return DIAGS_CUSTOM_EMAIL(data, cb, _subject, 'CLIENT_ORDER_DELEGATED', data._user.email, NOTIFICATION.CLIENT_ORDER_DELEGATED);
 }
 
 function CLIENT_ORDER_PAYMENT_SUCCESS(data, cb) {
     var _subject = 'RDV en attente de paiement: ' + data._order.address + '/' + dateTime(data._order.start);
     if (data._order.notifications.CLIENT_ORDER_PAYMENT_SUCCESS !== true) {
-        return DIAGS_USER_ORDER_CUSTOM(data, (err, r) => {
+        return DIAGS_CUSTOM_EMAIL(data, (err, r) => {
             data._order.notifications.CLIENT_ORDER_PAYMENT_SUCCESS = true;
             Order.update(data._order);
             cb && cb(err, r);
@@ -437,21 +439,53 @@ function CLIENT_ORDER_PAYMENT_SUCCESS(data, cb) {
 
 
 function LANDLORD_ORDER_PAYMENT_DELEGATED(data, cb) {
-    var _subject = 'Diagnostic Réservé en attente de paiement';
-    data._order.notifications = data._order.notifications || {};
-    if (data._order.notifications.LANDLORD_ORDER_PAYMENT_DELEGATED !== true) {
-        return DIAGS_USER_ORDER_CUSTOM(data, (err, r) => {
-            data._order.notifications.LANDLORD_ORDER_PAYMENT_DELEGATED = true;
-            Order.update(data._order);
-            cb && cb(err, r);
-        }, _subject, 'LANDLORD_ORDER_PAYMENT_DELEGATED', data._order.landLordEmail, NOTIFICATION.LANDLORD_ORDER_PAYMENT_DELEGATED);
+    actions.log('LANDLORD_ORDER_PAYMENT_DELEGATED:start');
+    if (data.attachmentPDFHTML) {
+        actions.log('LANDLORD_ORDER_PAYMENT_DELEGATED:attachment-build');
+        ctrl('Pdf').generate({
+            fileName: 'invoice_' + Date.now(),
+            html : data.attachmentPDFHTML
+        }, (err, res) => {
+            if (err) return _next();
+            if(res.ok){
+                actions.log('LANDLORD_ORDER_PAYMENT_DELEGATED:attachment-ok');
+                data.attachment = {
+                    path: process.cwd() + '/www/temp/' + res.fileName,
+                    fileName : res.fileName
+                };
+                return _next();
+            }else{
+                return _next();
+            }
+        })
+    }else{
+        return _next();
+    }
+
+    function _next() {
+        actions.log('LANDLORD_ORDER_PAYMENT_DELEGATED:next');
+        var _subject = 'Diagnostic Réservé en attente de paiement';
+        data._order.notifications = data._order.notifications || {};
+        if (data._order.notifications.LANDLORD_ORDER_PAYMENT_DELEGATED !== true) {
+            return DIAGS_CUSTOM_EMAIL(data, (err, r) => {
+                data._order.notifications.LANDLORD_ORDER_PAYMENT_DELEGATED = true;
+                Order.update(data._order);
+                cb && cb(err, r);
+            }, _subject, 'LANDLORD_ORDER_PAYMENT_DELEGATED', data._order.landLordEmail, NOTIFICATION.LANDLORD_ORDER_PAYMENT_DELEGATED);
+        }else{
+            actions.log('LANDLORD_ORDER_PAYMENT_DELEGATED:already-sended:abort');
+            cb(null,{
+                ok:true,
+                message:"notification already sended"
+            });
+        }
     }
 }
 
 function LANDLORD_ORDER_PAYMENT_SUCCESS(data, cb) {
     var _subject = 'Rendez-vous confirmé';
     if (data._order.notifications.LANDLORD_ORDER_PAYMENT_SUCCESS !== true) {
-        return DIAGS_USER_ORDER_CUSTOM(data, (err, r) => {
+        return DIAGS_CUSTOM_EMAIL(data, (err, r) => {
             data._order.notifications.LANDLORD_ORDER_PAYMENT_SUCCESS = true;
             Order.update(data._order);
             cb && cb(err, r);
@@ -459,7 +493,7 @@ function LANDLORD_ORDER_PAYMENT_SUCCESS(data, cb) {
     }
 }
 
-function DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, templateName, _to, _type) {
+function DIAGS_CUSTOM_EMAIL(data, cb, _subject, templateName, _to, _type) {
     var _user = data._user;
     var _order = data._order;
     actions.log(_type + '=' + JSON.stringify({
@@ -468,6 +502,7 @@ function DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, templateName, _to, _type) {
         price: _order.price
     }));
     send({
+        attachment: data.attachment || null,
         __notificationType: _type,
         _user: _user,
         to: _to,
@@ -498,7 +533,7 @@ function DIAGS_USER_ORDER_CUSTOM(data, cb, _subject, templateName, _to, _type) {
             '$ORDER_DIAG_REMUNERATION_HT': _order.diagRemunerationHT,
             '$ORDER_REVENUE_HT': _order.revenueHT,
             '$ORDER_MONTH_REVENUE_HT': _order.currentMonthTotalRevenueHT,
-            
+
             '$ORDER_DATE_HOUR': dateTime(_order.start),
             '$ORDER_DESCRIPTION': _order.info.description,
             '$ORDER_URL': adminUrl('/orders/edit/' + _order._id),
@@ -576,15 +611,15 @@ function ADMIN_CLIENT_ACCOUNT_CREATED(data, cb) {
         subject: "Nouveau client",
         templateName: 'ADMIN_CLIENT_ACCOUNT_CREATED',
         templateReplace: {
-            '$ADMIN_FIRSTNAME'      : _admin.firstName,
-            '$CLIENT_EMAIL'          : _client.email,
-            '$CLIENT_COMPANY_NAME'  : _client.companyName,
-            '$CLIENT_FIRSTNAME'     : _client.lastName,
-            '$CLIENT_LASTNAME'      : _client.lastName,
-            '$CLIENT_PHONE'         : _client.cellPhone,
-            '$CLIENT_ADDRESS'       : _client.address,
-            '$CLIENT_TYPE'          : _client.clientType,
-            '$EDIT_URL'             : adminUrl('/clients/edit/' + _client._id),
+            '$ADMIN_FIRSTNAME': _admin.firstName,
+            '$CLIENT_EMAIL': _client.email,
+            '$CLIENT_COMPANY_NAME': _client.companyName,
+            '$CLIENT_FIRSTNAME': _client.lastName,
+            '$CLIENT_LASTNAME': _client.lastName,
+            '$CLIENT_PHONE': _client.cellPhone,
+            '$CLIENT_ADDRESS': _client.address,
+            '$CLIENT_TYPE': _client.clientType,
+            '$EDIT_URL': adminUrl('/clients/edit/' + _client._id),
         },
         cb: cb
     });

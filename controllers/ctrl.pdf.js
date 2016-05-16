@@ -9,24 +9,33 @@ var log = (m) => {
 var fs = require('fs');
 var htmlToPdf = require('html-to-pdf');
 var decode = require('urldecode')
-//var fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
+    //var fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
 
 
 function generate(data, cb, req, res) {
-    log('test:start');
+    log('generate:start');
     data.fileName = data.fileName || "file_" + Date.now();
     data.fileName = data.fileName.replace('.pdf', '') + '.pdf';
+    if (fs.existsSync(process.cwd() + '/www/temp/' + data.fileName)) {
+        data.fileName = "file_" + Date.now();    
+    }
     //
     data.html = decode(data.html);
     //
     if (data.html) {
+        htmlToPdf.setInputEncoding('UTF-8');
+        htmlToPdf.setOutputEncoding('UTF-8');
         htmlToPdf.setDebug(true);
+        log('generate:build-start');
         htmlToPdf.convertHTMLString(data.html, process.cwd() + '/www/temp/' + data.fileName,
             function(err, res) {
+                log('generate:build-end');
                 if (err) {
+                    log('generate:rta:err');
                     return cb(err);
                 }
                 else {
+                    log('generate:rta:success');
                     return cb(null, {
                         ok: true,
                         message: res,
@@ -39,6 +48,7 @@ function generate(data, cb, req, res) {
 
     }
     else {
+        log('generate:html-required');
         return cb(null, {
             ok: false,
             message: "html required",
@@ -53,27 +63,30 @@ function stream(data, cb, req, res) {
     data = JSON.parse(data);
     //
     res.setHeader("content-type", "application/pdf");
-    res.setHeader('Content-disposition', ' filename='+(data.name||'file')+'.pdf'); //attachment;
+    res.setHeader('Content-disposition', ' filename=' + (data.name || 'file') + '.pdf'); //attachment;
     //
     var path = process.cwd() + '/www/temp/' + data.fileName;
-    log('stream:path:'+path);
+    log('stream:path:' + path);
     var stream = fs.createReadStream(path, {
         bufferSize: 64 * 1024
     })
     var had_error = false;
     stream.on('error', function(_err) {
-        log('stream:error:'+JSON.stringify(_err));
+        log('stream:error:' + JSON.stringify(_err));
         had_error = true;
     });
     stream.on('close', function() {
         log('stream:close');
         if (!had_error) {
-            setTimeout(function(){
-                try{
-                    fs.unlink(path);
-                }catch(e){};
-            },60000);
-            log('stream:delete-file',path);
+            setTimeout(function() {
+                try {
+                    if (fs.existsSync(path)) {
+                        fs.unlink(path);
+                    }
+                }
+                catch (e) {};
+            }, 60000);
+            log('stream:delete-file', path);
         }
     });
     /*
@@ -85,7 +98,7 @@ function stream(data, cb, req, res) {
         }
     });*/
     stream.pipe(res);
-    log('stream:streaming',path);
+    log('stream:streaming', path);
 }
 
 function view(data, cb, req, res) {
@@ -100,6 +113,7 @@ function view(data, cb, req, res) {
 }
 
 module.exports = {
+    generate:generate,
     view: view,
     stream: stream
 };

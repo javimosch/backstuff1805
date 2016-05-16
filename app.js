@@ -1,20 +1,22 @@
 var express = require('express');
-//var cors = require('express-cors')
+
 var bodyParser = require('body-parser')
 var bb = require('express-busboy');
 var busboy = require('connect-busboy');
 var path = require("path");
 var inspect = require('util').inspect;
 var fs = require('fs');
-
-require('./helpers/db');
-var configureRoutes = require('./helpers/handle.routes').configure;
-var configureProgrammedTasks = require('./helpers/programmedTasks').configure;
-
+require('./model/db');
+var configureRoutes = require('./model/app.routes').configure;
+var configureProgrammedTasks = require('./model/programmedTasks').configure;
 var app = express();
-
-//app.use(cors());
-
+var port = process.env.PORT || 5000;
+var LOCAL = process.env.LOCAL && process.env.LOCAL.toString() == '1' || false;
+var config = JSON.parse(fs.readFileSync(process.cwd() + '/package.json'));
+var apiMessage = 'Backstuff runing version ' + config.version + '!';
+//
+//
+//CORS
 app.all('*', function(req, res, next) {
     console.log(req.method);
     res.header("Access-Control-Allow-Origin", "*");
@@ -25,111 +27,36 @@ app.all('*', function(req, res, next) {
     }
     next();
 });
-
-/**
-app.options('*', cors({
-    origin:true,
-    allowedHeaders:'*',
-    methods:'*'
-}));
-
-app.post('*', cors({
-    origin:true,
-    allowedHeaders:'*',
-    methods:'*'
-}));*/
-
+//PARSE DATA
 app.use(busboy());
 app.use(function(req, res, next) {
-
     if (req.busboy) {
-        //req.busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
-        //console.log('file',fieldname,inspect(file),filename,encoding,mimetype);
-        //});
         req.busboy.on('field', function(key, value, keyTruncated, valueTruncated) {
             console.log('field', key, value, keyTruncated, valueTruncated);
         });
-        //req.pipe(req.busboy).on('close',(a,b,c)=>{console.log('close',a,b,c)});
     }
     next();
 });
-
-/*
-app.use(function(req,res,next){
-    var ct = req.get('content-type');
-    if(ct && ct.indexOf('multipart/form-data') !== -1)return next();
-    return bodyParser.json()(req,res,next);
-});
-
-app.use(function(req,res,next){
-    var ct = req.get('content-type');
-    if(ct && ct.indexOf('multipart/form-data') !== -1)return next();
-    return bodyParser.urlencoded({ extended: true })(req,res,next);
-});
-*/
-
 app.use(bodyParser.urlencoded({
-        extended: true
-    }))
-    /*
-    bb.extend(app,{
-        upload:true,
-        path: path.join(__dirname+'/uploads')
-    });*/
-app.use(bodyParser.json());
-
-
-
-
-var LOCAL = process.env.LOCAL && process.env.LOCAL.toString() == '1' || false;
-//var allowedOrigins = [];
-
-/*
-if(LOCAL){
-    allowedOrigins.push('*','*localhost:*','*localhost','https://blooming-refuge-27843.herokuapp.com');
-}else{
-    allowedOrigins.push('*','*localhost:*','*localhost','https://blooming-refuge-27843.herokuapp.com');
-}*/
-
-//console.log('Using allowedOrigins:', allowedOrigins);
-
-/*
-var allowCrossDomain = function(req, res, next) {
-
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'accept, content-type,x-requested-with');
-    if ('OPTIONS' === req.method) {
-        res.send(200);
-    }
-    else {
-        next();
-    }
-};
-app.use(allowCrossDomain);
-*/
-/*
-app.use(cors({
-    allowedOrigins: allowedOrigins
+    extended: true
 }))
-*/
-
-
-
-var config = JSON.parse(fs.readFileSync(process.cwd()+'/package.json'));
-var message = 'Backstuff runing version '+config.version+'!';
-console.log(message);
-
-app.get('/', function (req, res) {
-  res.json({messsage:message,support:config.author});
+app.use(bodyParser.json());
+//ROOT
+app.get('/', function(req, res) {
+    res.json({
+        messsage: apiMessage,
+        support: config.author
+    });
 });
-
+//ROUTES
 configureRoutes(app);
+//TASKS
 configureProgrammedTasks(app);
-
-
-
-var port = process.env.PORT || 5000;
+//STATIC
+app.use('/', express.static('./www'));
+//START
 app.listen(port, function() {
-    console.log('Example app listening on port ' + port + '!');
+    console.log(apiMessage);
+    console.log('adminURL' + process.env.adminURL);
+    console.log('backstuff-API listening on port ' + port + '!');
 });

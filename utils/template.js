@@ -1,6 +1,6 @@
 
 var S = require('string');
-var getFile = require('../helpers/utils').getFile;
+var getFile = require('../model/utils').getFile;
 
 function replace(html, params) {
     html = S(html);

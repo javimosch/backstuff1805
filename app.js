@@ -51,6 +51,15 @@ app.get('/', function(req, res) {
 configureRoutes(app);
 //TASKS
 configureProgrammedTasks(app);
+//DIRS
+var ensureDirectory=(path)=>{
+    if (!fs.existsSync(path))
+    fs.mkdirSync(path);
+}
+ensureDirectory(process.cwd()+'/www');
+ensureDirectory(process.cwd()+'/www/temp');
+
+
 //STATIC
 app.use('/', express.static('./www'));
 //START

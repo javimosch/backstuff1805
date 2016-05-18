@@ -7,7 +7,7 @@ var inspect = require('util').inspect;
 var fs = require('fs');
 require('./model/db');
 var configureRoutes = require('./model/app.routes').configure;
-var configureProgrammedTasks = require('./model/programmedTasks').configure;
+var configureProgrammedTasks = require('./model/tasks').configure;
 var app = express();
 var port = process.env.PORT || 5000;
 var LOCAL = process.env.LOCAL && process.env.LOCAL.toString() == '1' || false;
@@ -49,8 +49,6 @@ app.get('/', function(req, res) {
 });
 //ROUTES
 configureRoutes(app);
-//TASKS
-configureProgrammedTasks(app);
 //DIRS
 var ensureDirectory=(path)=>{
     if (!fs.existsSync(path))
@@ -59,6 +57,9 @@ var ensureDirectory=(path)=>{
 ensureDirectory(process.cwd()+'/www');
 ensureDirectory(process.cwd()+'/www/temp');
 
+
+//TASKS
+configureProgrammedTasks(app);
 
 //STATIC
 app.use('/', express.static('./www'));

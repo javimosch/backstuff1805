@@ -90,11 +90,11 @@ module.exports = {
         landLordAddress: {
             type: String
         },
-        landLordPaymentEmailSended: {
-            type: Boolean,
-            default: false
-        },
 
+        deliveredAt:{
+            type:Date,
+            default:null
+        },
         paidAt: {
             type: Date,
             default: null //date were the order was paid

@@ -1,14 +1,64 @@
 var mongoose = require('./db').mongoose;
 var getModel = require('./db').getModel;
+var getSchema = require('./db').getSchema;
 var validate = require('./validator').validate;
 var promise = require('./utils').promise;
+
+
+var __hookData = {};
+var _hook = function(schemaName, n, cb, data, index) {
+    __hookData[schemaName] = __hookData[schemaName] || {}
+    var _hooks = __hookData[schemaName];
+    _hooks[n] = _hooks[n] || [];
+    //
+    if (typeof cb == 'function') {
+        _hooks[n].push(cb);
+        console.log(schemaName, 'HOOK', n, 'added at', _hooks[n].length);
+    }
+    else {
+        
+        if (data && index) {
+            
+            var _cb = _hooks[n][index] || undefined;
+            if (!_cb) {
+                console.log(schemaName, 'HOOK:RTA', JSON.stringify(data));
+                return data;
+            }
+            else {
+                console.log(schemaName, 'HOOK', n, 'fire:index:', index, '  total:', _hooks[n].length);
+                data = _cb(data);
+                return _hook(schemaName, n, null, data, index++);
+            }
+        }
+        else {
+            
+            var _data = cb;
+            if (_hooks[n][0]) {
+                console.log(schemaName, 'HOOK', n, 'fire:index:', 0, '  total:', _hooks[n].length);
+                //console.log(schemaName, 'HOOK', n, 'firing', 0);
+                _data = _hooks[n][0](_data);
+                return _hook(schemaName, n, null, _data, 1);
+            }
+            else {
+                //console.log(schemaName, 'HOOK', n, 'skip');
+                return _data;
+            }
+        }
+    }
+};
+
+
+
 
 exports.create = function(modelName, m) {
     if (!mongoose) mongoose = m;
     var Model = getModel(modelName);
 
+    var schema = getSchema(modelName);
 
-
+    var hook = (a, b, c, d) => {
+        return _hook(modelName, a, b, c, d);
+    };
 
     function log(x) {
         console.log(''); //enter
@@ -21,6 +71,12 @@ exports.create = function(modelName, m) {
         });
         console.log(modelName.toUpperCase() + ': ' + msg);
     }
+
+
+
+
+
+
 
     function existsById(_id, cb) {
         log('existsById=' + _id);
@@ -36,7 +92,7 @@ exports.create = function(modelName, m) {
             log('exists=' + JSON.stringify(data));
         }
         catch (e) {
-            log('exists=','circular-json-error');
+            log('exists=', 'circular-json-error');
         }
         Model.count(toRules(data), (err, r) => {
             log('exists=' + (r && (r > 0) || false));
@@ -68,7 +124,8 @@ exports.create = function(modelName, m) {
 
         return promise((then, error, emit) => {
             //
-            log('createUpdate=' + JSON.stringify(data));
+            //log('createUpdate=' + JSON.stringify(data));
+            log('createUpdate:start');
             log('createUpdate:requiredKeys=' + JSON.stringify(requiredKeys));
             check(data, requiredKeys || [], (err, r) => {
                 if (err) return rta(err, null);
@@ -76,14 +133,17 @@ exports.create = function(modelName, m) {
                     data.updatedAt = new Date();
                     var _id = data._id;
                     delete data._id;
-                    return Model.findByIdAndUpdate(_id, data).exec((err, r) => {
+                    data = hook('preSave', data);
+                    return Model.findOneAndUpdate(toRules({
+                        _id: _id
+                    }), data).exec((err, r) => {
                         if (err) return rta(err, null);
                         if (!r) return rta(modelName + '= ' + _id + ' do not belong to any item.', null);
                         return rta(err, r);
                     });
                 }
                 matchData = matchData || {};
-                
+
                 //log('createUpdate:matchData=' + JSON.stringify(requiredKeys));
 
                 if (matchData.length && typeof matchData !== 'string') {
@@ -108,6 +168,7 @@ exports.create = function(modelName, m) {
                             for (var x in data) {
                                 r[x] = data[x];
                             }
+                            data = hook('preSave', data);
                             return r.save((err, r) => {
                                 emit('updated', err, r);
                                 return rta(err, r);
@@ -115,6 +176,7 @@ exports.create = function(modelName, m) {
                         }
                         else {
                             log('createUpdate:match:not-found:creating');
+                            data = hook('preSave', data);
                             _create(data, (err, r) => {
                                 if (err) return rta(err, null);
                                 emit('created', err, r);
@@ -124,7 +186,8 @@ exports.create = function(modelName, m) {
                     })
                 }
                 else {
-                    log('createUpdate:creating',data);
+                    log('createUpdate:creating', data);
+                    data = hook('preSave', data);
                     _create(data, (err, r) => {
                         if (err) return rta(err, null);
                         emit('created', err, r);
@@ -140,8 +203,8 @@ exports.create = function(modelName, m) {
                 }
                 else {
                     then(err, r);
-                    log('createUpdate:rta' + JSON.stringify(r));
-                    if(cb) return cb(err, r);
+                    //log('createUpdate:rta' + JSON.stringify(r));
+                    if (cb) return cb(err, r);
                 }
             }
         });
@@ -251,7 +314,9 @@ exports.create = function(modelName, m) {
                 }
             }
 
-            log('result=', JSON.stringify(rta));
+            //log('result=', JSON.stringify(rta));
+            log('result= ' + (rta.ok == true) + (err ? ' Error: ' + JSON.stringify(err) : ''));
+            //
             if (options && options.__res) {
                 options.__res(res, rta);
             }
@@ -262,7 +327,7 @@ exports.create = function(modelName, m) {
     }
 
     function getById(data, cb) {
-        log('getById=' + JSON.stringify(data));
+        log('getById=' + JSON.stringify(data._id));
         check(data, ['_id'], (err, r) => {
             if (err) return cb(err, r);
             var query = Model.findById(data._id)
@@ -384,25 +449,29 @@ exports.create = function(modelName, m) {
     }
 
     function update(data, cb) {
-        log('update=' + JSON.stringify(data));
+        //log('update=' + JSON.stringify(data));
+        log('update:start');
         check(data, ['_id'], (err, r) => {
             if (err) return cb && cb(err, null);
             var _id = data._id;
             delete data._id;
+            data = hook('preSave', data);
             Model.update({
                 _id: _id
             }, data, (err, r) => {
-                log('update:ok='+!err+' '+JSON.stringify(err));
+                log('update:ok=' + !err + ' ' + JSON.stringify(err));
                 if (!cb) return;
                 if (err) return cb(err, null);
-                log('update:rta='+JSON.stringify(r));
+                log('update:rta=' + JSON.stringify(r));
                 return cb(null, r);
             });
         });
     }
 
     return {
+        schema: schema,
         model: Model,
+        _hook: hook,
         paginate: paginate,
         existsById: existsById,
         existsByField: existsByField,

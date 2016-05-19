@@ -17,7 +17,7 @@ function generate(data, cb, req, res) {
     data.fileName = data.fileName || "file_" + Date.now();
     data.fileName = data.fileName.replace('.pdf', '') + '.pdf';
     if (fs.existsSync(process.cwd() + '/www/temp/' + data.fileName)) {
-        data.fileName = "file_" + Date.now();    
+        data.fileName = "file_" + Date.now();
     }
     //
     data.html = decode(data.html);
@@ -66,6 +66,11 @@ function stream(data, cb, req, res) {
     res.setHeader('Content-disposition', ' filename=' + (data.name || 'file') + '.pdf'); //attachment;
     //
     var path = process.cwd() + '/www/temp/' + data.fileName;
+
+    if (!fs.existsSync(path)) {
+        return res.send("Invalid file path or file deleted: "+data.fileName);
+    }
+
     log('stream:path:' + path);
     var stream = fs.createReadStream(path, {
         bufferSize: 64 * 1024
@@ -113,7 +118,7 @@ function view(data, cb, req, res) {
 }
 
 module.exports = {
-    generate:generate,
+    generate: generate,
     view: view,
     stream: stream
 };

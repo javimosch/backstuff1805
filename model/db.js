@@ -5,7 +5,7 @@ var configureGridFS = require('../controllers/ctrl.file').configure;
 var configureGridFSActions = require('../controllers/ctrl.file').configureActions;
 var Schema = mongoose.Schema;
 var LOCAL = process.env.LOCAL && process.env.LOCAL.toString() == '1' || false;
-var models = {};
+
 // Build the connection string 
 var dbURI = 'mongodb://root:root@ds011452.mlab.com:11452/manitas';
 
@@ -50,10 +50,15 @@ configureGridFS(mongoose);
 
 
 
+var models = {};
+var schemas = {};
+
+exports.getModel  = (n) => models[n];
+exports.getSchema = (n) => schemas[n];
+exports.mongoose  = mongoose;
 
 function model(n, def) {
     if (!def) console.log('WARN:' + n + ' def required');
-
     if (!def.createdAt) {
         def.createdAt = {
             type: Date,
@@ -67,10 +72,8 @@ function model(n, def) {
             default: Date.now
         }
     }
-
     var schema = new mongoose.Schema(def);
     schema.plugin(mongoosePaginate);
-
     schema.pre('save', function(next) {
         var now = new Date();
         this.updatedAt = now;
@@ -79,14 +82,14 @@ function model(n, def) {
         }
         next();
     });
-
     models[n] = mongoose.model(n, schema);
+    schemas[n] = schema;
 }
-exports.getModel = (n) => models[n];
 
 model('Stats', {});
 model('File', {});
 model('Email', {});
+model('Stripe', {});
 model('Settings', require('../schemas/schema.diags-settings').def);
 model('Payment', require('../schemas/schema.diags-payment').def);
 model('Pdf', require('../schemas/schema.pdf').def);
@@ -101,5 +104,5 @@ model('TimeRange', require('../schemas/schema.time-range').def);
 model('User', require('../schemas/schema.diags-user').def);
 model('Order', require('../schemas/schema.diags-order').def);
 
-exports.mongoose = mongoose;
+
 configureGridFSActions();

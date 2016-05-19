@@ -318,7 +318,8 @@ function notifyClientOrderCreation(_order) {
 }
 
 function save(data, cb) {
-    actions.log('save=' + JSON.stringify(data));
+    //actions.log('save=' + JSON.stringify(data))
+    actions.log('save:start');
 
     var prevStatus = '';
     if (data._id) {
@@ -355,25 +356,31 @@ function save(data, cb) {
                 actions.log('save:currentStatus=' + _order.status);
 
                 if (prevStatus == 'created' && _order.status == 'prepaid') { //PREPAID DURING BOOKING
-                    //ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS
+                    //ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS //ADMIN//#7
                     everyAdmin(_admin => {
                         Notif.trigger(NOTIFICATION.ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS, {
                             _user: _admin,
-                            _order: data
+                            _order: _order
                         });
+                    });
+
+                    //DIAG_NEW_RDV //DIAG//#2 OK ctrl.order
+                    Notif.trigger(NOTIFICATION.DIAG_NEW_RDV, {
+                        _user: _order._diag,
+                        _order: _order
                     });
 
                 }
 
                 if (prevStatus == 'ordered' && _order.status == 'prepaid') { //PAID AFTER DELEGATION
-                    //ADMIN_ORDER_PAYMENT_SUCCESS
+                    //ADMIN_ORDER_PAYMENT_SUCCESS //ADMIN//#8
                     everyAdmin(_admin => {
                         Notif.trigger(NOTIFICATION.ADMIN_ORDER_PAYMENT_SUCCESS, {
                             _user: _admin,
-                            _order: data
+                            _order: _order
                         });
                     });
-                    //DIAG_RDV_CONFIRMED
+                    //DIAG_RDV_CONFIRMED //DIAG//#3
                     UserAction.get({
                         _id: _order._diag._id || _order._diag
                     }, (_err, _diag) => {
@@ -387,7 +394,7 @@ function save(data, cb) {
 
 
                 if (prevStatus !== 'prepaid' && _order.status === 'prepaid') {
-                    //CLIENT_ORDER_PAYMENT_SUCCESS
+                    //CLIENT_ORDER_PAYMENT_SUCCESS //CLIENT//#3
                     UserAction.get({
                         _id: _order._client._id || _order._client
                     }, (_err, _client) => {
@@ -395,7 +402,7 @@ function save(data, cb) {
                             _user: _client,
                             _order: _order
                         });
-                        //LANDLORD_ORDER_PAYMENT_SUCCESS
+                        //LANDLORD_ORDER_PAYMENT_SUCCESS //LANDLORD//#2
                         if (_order.landLordEmail) {
                             Notif.trigger(NOTIFICATION.LANDLORD_ORDER_PAYMENT_SUCCESS, {
                                 _user: _client,
@@ -429,7 +436,7 @@ function orderPopulate(data, cb) {
         _id: data._id,
         __populate: {
             _client: 'email firstName lastName companyName cellPhone',
-            _diag: "email firstName lastName"
+            _diag: "email firstName lastName password"
         }
     }, (_err, _order) => cb(_order));
 }
@@ -554,7 +561,17 @@ function saveWithEmail(data, cb) {
     });
 }
 
+function preSave(data) {
 
+
+    var now = new Date();
+    if (data.status == 'delivered' || data.status == 'completed' && data.deliveredAt === null) {
+        data.deliveredAt = now;
+    }
+
+
+    return data;
+}
 
 module.exports = {
     //custom
@@ -576,5 +593,8 @@ module.exports = {
     toRules: actions.toRules,
     find: actions.find,
     create: create,
-    log: actions.log
+    log: actions.log,
+    _configure: (hook) => {
+        hook('preSave', preSave);
+    }
 };

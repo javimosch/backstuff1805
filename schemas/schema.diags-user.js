@@ -12,10 +12,6 @@ module.exports = {
         password: String,
         firstName: String,
         lastName: String,
-        passwordSended: {
-            type: Boolean,
-            default: false
-        },
 
         fixedTel: String,
         cellPhone: String,

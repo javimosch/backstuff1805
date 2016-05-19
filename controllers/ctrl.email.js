@@ -80,15 +80,15 @@ function send(opt, resCb) {
     actions.log('send:start=' + JSON.stringify(opt));
     var html = opt.html || template(opt.templateName, opt.templateReplace);
     if (opt.subject) {
-        if (opt.subject.indexOf('Diag Project') == -1) {
-            opt.subject = 'Diag Project | ' + opt.subject;
+        if (process.env.companyName) {
+            opt.subject = process.env.companyName+' | ' + opt.subject;
         }
     }
     var data = {
         attachment: opt.attachment || null,
         type: opt.__notificationType,
         html: html,
-        from: process.env.emailFrom || 'diags-project@startup.com',
+        from: process.env.emailFrom || 'diagnostical@startup.com',
         to: opt.to || process.env.emailTo || 'arancibiajav@gmail.com',
         subject: opt.subject
     };
@@ -418,7 +418,22 @@ function ADMIN_ORDER_PAYMENT_SUCCESS(data, cb) {
 
 function ADMIN_ORDER_PAYMENT_DELEGATED(data, cb) {
     var _subject = dateTime(data._order.start) + '/' + data._order.address + " Paiement Délégué";
-    return DIAGS_CUSTOM_EMAIL(data, cb, _subject, 'ADMIN_ORDER_PAYMENT_DELEGATED', data._user.email, NOTIFICATION.ADMIN_ORDER_PAYMENT_DELEGATED);
+    actions.log('ADMIN_ORDER_PAYMENT_DELEGATED');
+    data._order.notifications = data._order.notifications || {};
+    if (data._order.notifications.ADMIN_ORDER_PAYMENT_DELEGATED !== true) {
+        return DIAGS_CUSTOM_EMAIL(data, (err, r) => {
+            data._order.notifications.ADMIN_ORDER_PAYMENT_DELEGATED = true;
+            Order.update(data._order);
+            cb && cb(err, r);
+        }, _subject, 'ADMIN_ORDER_PAYMENT_DELEGATED', data._order.landLordEmail, NOTIFICATION.ADMIN_ORDER_PAYMENT_DELEGATED);
+    }
+    else {
+        actions.log('ADMIN_ORDER_PAYMENT_DELEGATED:already-sended:abort');
+        cb && cb(null, {
+            ok: true,
+            message: "notification already sended"
+        });
+    }
 }
 
 function CLIENT_ORDER_DELEGATED(data, cb) {
@@ -427,13 +442,13 @@ function CLIENT_ORDER_DELEGATED(data, cb) {
 }
 
 function CLIENT_ORDER_PAYMENT_SUCCESS(data, cb) {
-    var _subject = 'RDV en attente de paiement: ' + data._order.address + '/' + dateTime(data._order.start);
+    var _subject = 'Rendez-vous confirmé';
     if (data._order.notifications.CLIENT_ORDER_PAYMENT_SUCCESS !== true) {
         return DIAGS_CUSTOM_EMAIL(data, (err, r) => {
             data._order.notifications.CLIENT_ORDER_PAYMENT_SUCCESS = true;
             Order.update(data._order);
             cb && cb(err, r);
-        }, _subject, 'CLIENT_ORDER_PAYMENT_SUCCESS', data._order.landLordEmail, NOTIFICATION.CLIENT_ORDER_PAYMENT_SUCCESS);
+        }, _subject, 'CLIENT_ORDER_PAYMENT_SUCCESS', data._client.email, NOTIFICATION.CLIENT_ORDER_PAYMENT_SUCCESS);
     }
 }
 
@@ -444,25 +459,30 @@ function LANDLORD_ORDER_PAYMENT_DELEGATED(data, cb) {
         actions.log('LANDLORD_ORDER_PAYMENT_DELEGATED:attachment-build');
         ctrl('Pdf').generate({
             fileName: 'invoice_' + Date.now(),
-            html : data.attachmentPDFHTML
+            html: data.attachmentPDFHTML
         }, (err, res) => {
             if (err) return _next();
-            if(res.ok){
+            if (res.ok) {
                 actions.log('LANDLORD_ORDER_PAYMENT_DELEGATED:attachment-ok');
                 data.attachment = {
                     path: process.cwd() + '/www/temp/' + res.fileName,
-                    fileName : res.fileName
+                    fileName: res.fileName
                 };
                 return _next();
-            }else{
+            }
+            else {
                 return _next();
             }
         })
-    }else{
+    }
+    else {
         return _next();
     }
 
     function _next() {
+        
+        ADMIN_ORDER_PAYMENT_DELEGATED(data,null);//async no cb
+        
         actions.log('LANDLORD_ORDER_PAYMENT_DELEGATED:next');
         var _subject = 'Diagnostic Réservé en attente de paiement';
         data._order.notifications = data._order.notifications || {};
@@ -472,15 +492,18 @@ function LANDLORD_ORDER_PAYMENT_DELEGATED(data, cb) {
                 Order.update(data._order);
                 cb && cb(err, r);
             }, _subject, 'LANDLORD_ORDER_PAYMENT_DELEGATED', data._order.landLordEmail, NOTIFICATION.LANDLORD_ORDER_PAYMENT_DELEGATED);
-        }else{
+        }
+        else {
             actions.log('LANDLORD_ORDER_PAYMENT_DELEGATED:already-sended:abort');
-            cb(null,{
-                ok:true,
-                message:"notification already sended"
+            cb(null, {
+                ok: true,
+                message: "notification already sended"
             });
         }
     }
 }
+
+
 
 function LANDLORD_ORDER_PAYMENT_SUCCESS(data, cb) {
     var _subject = 'Rendez-vous confirmé';

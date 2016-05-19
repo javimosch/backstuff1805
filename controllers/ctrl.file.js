@@ -4,12 +4,12 @@ var path = require("path");
 var generatePassword = require("password-maker");
 var inspect = require('util').inspect;
 var modelName = 'file';
-var conn, Schema, gfs, mongoose, actions;
+var conn, gfs, mongoose, actions; //Schema
 var configure = (m) => {
     mongoose = m;
     Grid.mongo = mongoose.mongo;
     conn = mongoose.connection;
-    Schema = mongoose.Schema;
+   // Schema = mongoose.Schema;
     gfs = Grid(conn.db);
 };
 var configureActions = () => {

@@ -1,4 +1,4 @@
-var name = 'diplomeExpirationCheck';
+var name = 'task:diplomeExpirationCheck';
 var _ = require('lodash');
 var moment = require('moment');
 var User = require('../db.actions').create('User');
@@ -48,7 +48,7 @@ function handler(data, cb) {
                         else {
                             if (moment().diff(moment(info.expirationDate), 'days') < 31) {
                                 if (!_.isUndefined(info.expirationDateNotificationSended) && info.expirationDateNotificationSended === true) {
-                                    console.log(diag.email + ' ' + filename + ' has expire and alert was already sended.');
+                                    log(diag.email + ' ' + filename + ' has expire and alert was already sended.');
                                 }
                                 else {
                                     User.getAll({

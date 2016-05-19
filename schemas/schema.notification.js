@@ -3,27 +3,38 @@ var Schema = mongoose.Schema;
 
 module.exports = {
     def: {
-        _category: {
+        _config: {
             type: Schema.Types.ObjectId,
-            ref: 'Category',
-            required: false
+            ref: 'UserNotifications',
+            required: true
         },
-        code: {
-            type: String,
-            required: true,
-            unique: true
-        }, //EX: BOOKING_DPE_TITLE_2_CONTENT
-        description: {
-            type: String,
-            required: false
+        _user: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            required: true
         },
-        content: {
+        type: {
             type: String,
             required: true
         },
-        updatedByHuman: {
+        to: {
+            type: String,
+            required: true
+        },
+        subject: {
+            type: String,
+            required: true
+        },
+        contents: {
+            type: String,
+            required: true
+        },
+        sended: {
             type: Boolean,
             default: false
+        },
+        sendedDate: {
+            type: Date
         },
         createdAt: {
             type: Date,

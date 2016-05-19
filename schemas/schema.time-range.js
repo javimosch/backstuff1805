@@ -3,28 +3,32 @@ var Schema = mongoose.Schema;
 
 module.exports = {
     def: {
-        _category: {
+        _user: {
             type: Schema.Types.ObjectId,
-            ref: 'Category',
-            required: false
+            ref: 'User',
+            required: true
         },
-        code: {
-            type: String,
-            required: true,
-            unique: true
-        }, //EX: BOOKING_DPE_TITLE_2_CONTENT
         description: {
             type: String,
             required: false
         },
-        content: {
+        type: {
             type: String,
+            required: true,
+            default: 'work-exception'
+        },
+        start: {
+            type: Date,
             required: true
         },
-        updatedByHuman: {
-            type: Boolean,
-            default: false
+        end: {
+            type: Date,
+            required: true
         },
+        repeat: {
+            type: String,
+            required: true
+        }, //day, week, none
         createdAt: {
             type: Date,
             default: Date.now

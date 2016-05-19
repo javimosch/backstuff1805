@@ -22,6 +22,17 @@ function replaceAll(word,search, replacement) {
     return word.replace(new RegExp(search, 'g'), replacement);
 };
 
+function cbHell(quantity, cb) {
+    return {
+        call: () => cb(),
+        next: () => {
+            quantity--;
+            if (quantity === 0) cb();
+        }
+    }
+}
+exports.cbHell=cbHell;
+
 //routing
 function adminUrl(join, angularRoute) {
     var angularRoute = angularRoute || true;

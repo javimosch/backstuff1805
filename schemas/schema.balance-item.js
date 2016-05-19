@@ -3,27 +3,27 @@ var Schema = mongoose.Schema;
 
 module.exports = {
     def: {
-        _category: {
+        _user: {
             type: Schema.Types.ObjectId,
-            ref: 'Category',
-            required: false
+            ref: 'User',
+            required: true
         },
-        code: {
-            type: String,
-            required: true,
-            unique: true
-        }, //EX: BOOKING_DPE_TITLE_2_CONTENT
+        _order: {
+            type: Schema.Types.ObjectId,
+            ref: 'Order',
+            required: true
+        },
         description: {
-            type: String,
-            required: false
-        },
-        content: {
             type: String,
             required: true
         },
-        updatedByHuman: {
+        pending: {
             type: Boolean,
-            default: false
+            required: true
+        },
+        amount: {
+            type: String,
+            required: true
         },
         createdAt: {
             type: Date,

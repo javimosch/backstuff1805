@@ -43,6 +43,7 @@ function pay(data, cb) {
             _id: _userID
         }, (err, _user) => {
             if (err) return cb(err, _user);
+            data._client = _user;
             _user.stripeToken = data.stripeToken; //
             if (_user.stripeCustomer) {
                 data.stripeCustomer = _user.stripeCustomer;

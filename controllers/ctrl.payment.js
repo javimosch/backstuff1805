@@ -38,8 +38,9 @@ function associatedOrder(data, cb) {
                     else {
                         cb('Refund do not have a charge related.', refund);
                     }
-                }else{
-                        cb('Refund not found.', refund);
+                }
+                else {
+                    cb('Refund not found.', refund);
                 }
             }
         );
@@ -150,6 +151,7 @@ function listCustomerCharges(data, cb) {
 
 function createCustomer(_user, cb) {
     actions.log('createCustomer=' + JSON.stringify(_user));
+
     stripe.customers.create({
         email: _user.email,
         metadata: {
@@ -165,12 +167,12 @@ function createCustomer(_user, cb) {
 }
 
 function payOrder(_order, cb) {
-    actions.log('payOrder=' + JSON.stringify(_order));
+    actions.log('payOrder:start');
 
     if (!_order.stripeToken) return cb("payOrder: stripeToken required.", null);
     if (!_order.stripeCustomer) return cb("payOrder: stripeCustomer required.", null);
 
-    var charge = stripe.charges.create({
+    var payload = {
         amount: _order.price * 100, // amount in cents, again
         currency: "eur",
         //source: _order.stripeToken,
@@ -179,21 +181,37 @@ function payOrder(_order, cb) {
         metadata: {
             _order: _order._id,
             _orderDiag: _order._diag._id || _order._diag,
-            _orderClient: _order._client._id || _order._client,
+            _orderClient: _order._client._id && _order._client._id.toHexString() || _order._client,
             _orderDescription: _order.address + ' (' + formatTime(_order.diagStart) + ' - ' + formatTime(_order.diagEnd) + ')',
             _orderURL: adminUrl('/orders/edit/' + _order._id)
         }
-    }, (err, charge) => {
-        if (err && err.type === 'StripeCardError') {
+    };
+
+    //if (_order._client.clientType != 'landlord' && _order.landlordEmail) {
+    //    payload.receipt_email = _order.landlordEmail;
+    //}
+    
+    if(_order.info && _order.info.description){
+        payload.statement_descriptor = _order.info.description.substring(0,19)+'...';
+    }
+
+    if (_order.stripeTokenEmail) {
+        payload.receipt_email = _order.stripeTokenEmail;
+    }
+
+    actions.log('payOrder:payload' + JSON.stringify(payload));
+
+    stripe.charges.create(payload, (err, _charge) => {
+        if (err) { // && err.type === 'StripeCardError'
             // The card has been declined
             cb(err, null);
         }
         else {
-            actions.log('payOrder:rta=' + JSON.stringify(charge));
+            actions.log('payOrder:rta=' + JSON.stringify(_charge));
 
-            captureOrderCharge(charge); //async
+            captureOrderCharge(_charge); //async
 
-            cb(null, charge)
+            cb(null, _charge)
         }
     });
 }
@@ -214,7 +232,7 @@ function captureOrderCharge(charge, cb) {
 
 //exports.stripe = stripe;
 module.exports = {
-    stripe:stripe,
+    stripe: stripe,
     listDiagCharges: listDiagCharges,
     diagBalance: diagBalance,
     payOrder: payOrder,

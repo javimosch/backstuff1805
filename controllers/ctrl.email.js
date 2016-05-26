@@ -100,7 +100,7 @@ function send(opt, resCb) {
         attachment: opt.attachment || null,
         type: opt.__notificationType,
         html: html,
-        from: process.env.emailFrom || 'diagnostical@startup.com',
+        from: process.env.emailFrom || 'commande@diagnostical.fr',
         to: opt.to || process.env.emailTo || 'arancibiajav@gmail.com',
         subject: opt.subject
     };
@@ -214,6 +214,10 @@ function dateTime(d) {
     return moment(d).format('DD-MM-YY HH[h]mm');
 }
 
+function dateTime2(d){
+    return moment().format('[Le] dddd DD [de] MMMM YY [à] HH[h]mm')
+}
+
 
 
 
@@ -279,7 +283,7 @@ function ADMIN_DIPLOME_EXPIRATION(data, cb) {
         templateReplace: {
             '$DIAG_NAME': data._diag.firstName,
             '$DIAG_MOBILE': data._diag.cellPhone,
-            '$DIAG_DIPLOME_EXPIRATION_DATE': dateTime(data._info.expirationDate),
+            '$DIAG_DIPLOME_EXPIRATION_DATE': dateTime2(data._info.expirationDate),
             '$DIAG_DIPLOME_FILENAME': data.filename,
             '$DIAG_EDIT_URL': adminUrl('/diags/edit/' + data._diag._id),
         },
@@ -532,15 +536,18 @@ function DIAGS_CUSTOM_EMAIL(data, cb, _subject, templateName, _to, _type) {
             '$LANDLORD_PHONE': _order.landLordPhone,
             '$ORDER_DIAG_LIST': htmlOrderSelectedDiagsList(_order),
             '$ORDER_ADDRESS': _order.address,
-            '$ORDER_KEYS_INFO': _order.keysAddress + ' / ' + dateTime(_order.keysTimeFrom) + ' - ' + time(_order.keysTimeFrom),
+            '$ORDER_KEYS_INFO': _order.keysAddress + ' / ' + dateTime2(_order.keysTimeFrom) + ' - ' + time(_order.keysTimeFrom),
+            
             '$ORDER_OBSERVATION': _order.obs,
+            '$OBS_DISPLAY': (_order.obs)?'block':'none',
+            
             '$ORDER_PRICE_TTC': _order.price,
             '$ORDER_PRICE_HT': _order.priceHT,
             '$ORDER_DIAG_REMUNERATION_HT': _order.diagRemunerationHT,
             '$ORDER_REVENUE_HT': _order.revenueHT,
             '$ORDER_MONTH_REVENUE_HT': _order.currentMonthTotalRevenueHT,
 
-            '$ORDER_DATE_HOUR': dateTime(_order.start),
+            '$ORDER_DATE_HOUR': dateTime2(_order.start),
             '$ORDER_DESCRIPTION': _order.info.description,
             '$ORDER_URL': adminUrl('/orders/edit/' + _order._id),
             '$ORDER_PUBLIC_URL': adminUrl('/orders/view/' + _order._id)
@@ -559,11 +566,24 @@ function DIAGS_CUSTOM_EMAIL(data, cb, _subject, templateName, _to, _type) {
     });
 }
 
+function diagNameConvertion(key){
+    if(key=='electricity') return 'Electricité';
+    if(key=='parasitaire') return 'Parasitaire';
+    if(key=='gaz') return 'Gaz';
+    if(key=='termites') return 'Termites';
+    if(key=='ernt') return 'État des risques naturels, miniers et technologiques';
+    if(key=='loiCarrez') return 'Carrez';
+    if(key=='crep') return 'Plomb';
+    if(key=='dta') return 'Amiante';
+    if(key=='dpe') return 'DPE';
+    return key;
+}
+
 function htmlOrderSelectedDiagsList(_order) {
     var rta = "<ul>";
     Object.keys(_order.diags).forEach(key => {
         if (_order.diags[key]) {
-            rta += "<li>" + key + "</li>";
+            rta += "<li>" + diagNameConvertion(key) + "</li>";
         }
     })
     return rta + '</ul>';
@@ -576,3 +596,4 @@ function dblog(msg, type) {
         type: type
     });
 }
+

@@ -17,34 +17,34 @@ var actions = {
 };
 
 var NOTIFICATION = {
-    ADMIN_ADMIN_ACCOUNT_CREATED         : 'ADMIN_ADMIN_ACCOUNT_CREATED',
-    ADMIN_CLIENT_ACCOUNT_CREATED        : 'ADMIN_CLIENT_ACCOUNT_CREATED',
-    ADMIN_DIAG_ACCOUNT_CREATED          : 'ADMIN_DIAG_ACCOUNT_CREATED',
-    ADMIN_DIPLOME_EXPIRATION            : 'ADMIN_DIPLOME_EXPIRATION',
-    ADMIN_NEW_CONTACT_FORM_MESSAGE      : 'ADMIN_NEW_CONTACT_FORM_MESSAGE', //notif_newContactFormMessage,
-    ADMIN_ORDER_PAYMENT_DELEGATED       : 'ADMIN_ORDER_PAYMENT_DELEGATED',
-    ADMIN_ORDER_PAYMENT_SUCCESS         : 'ADMIN_ORDER_PAYMENT_SUCCESS',
-    ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS : 'ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS',
-    
-    CLIENT_CLIENT_NEW_ACCOUNT           : 'CLIENT_CLIENT_NEW_ACCOUNT',
-    CLIENT_ORDER_CREATED                : 'CLIENT_ORDER_CREATED',
-    CLIENT_ORDER_PAYMENT_SUCCESS        : 'CLIENT_ORDER_PAYMENT_SUCCESS',
-    CLIENT_ORDER_DELEGATED              : 'CLIENT_ORDER_DELEGATED',
-    
-    DIAG_DIAG_ACCOUNT_CREATED           : 'DIAG_DIAG_ACCOUNT_CREATED',
-    DIAG_NEW_RDV                        : 'DIAG_NEW_RDV',
-    DIAG_RDV_CONFIRMED                  : 'DIAG_RDV_CONFIRMED',
+    ADMIN_ADMIN_ACCOUNT_CREATED: 'ADMIN_ADMIN_ACCOUNT_CREATED',
+    ADMIN_CLIENT_ACCOUNT_CREATED: 'ADMIN_CLIENT_ACCOUNT_CREATED',
+    ADMIN_DIAG_ACCOUNT_CREATED: 'ADMIN_DIAG_ACCOUNT_CREATED',
+    ADMIN_DIPLOME_EXPIRATION: 'ADMIN_DIPLOME_EXPIRATION',
+    ADMIN_NEW_CONTACT_FORM_MESSAGE: 'ADMIN_NEW_CONTACT_FORM_MESSAGE', //notif_newContactFormMessage,
+    ADMIN_ORDER_PAYMENT_DELEGATED: 'ADMIN_ORDER_PAYMENT_DELEGATED',
+    ADMIN_ORDER_PAYMENT_SUCCESS: 'ADMIN_ORDER_PAYMENT_SUCCESS',
+    ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS: 'ADMIN_ORDER_PAYMENT_PREPAID_SUCCESS',
 
-    LANDLORD_ORDER_PAYMENT_DELEGATED    : 'LANDLORD_ORDER_PAYMENT_DELEGATED',
-    LANDLORD_ORDER_PAYMENT_SUCCESS      : 'LANDLORD_ORDER_PAYMENT_SUCCESS',
-    
+    CLIENT_CLIENT_NEW_ACCOUNT: 'CLIENT_CLIENT_NEW_ACCOUNT',
+    CLIENT_ORDER_CREATED: 'CLIENT_ORDER_CREATED',
+    CLIENT_ORDER_PAYMENT_SUCCESS: 'CLIENT_ORDER_PAYMENT_SUCCESS',
+    CLIENT_ORDER_DELEGATED: 'CLIENT_ORDER_DELEGATED',
+
+    DIAG_DIAG_ACCOUNT_CREATED: 'DIAG_DIAG_ACCOUNT_CREATED',
+    DIAG_NEW_RDV: 'DIAG_NEW_RDV',
+    DIAG_RDV_CONFIRMED: 'DIAG_RDV_CONFIRMED',
+
+    LANDLORD_ORDER_PAYMENT_DELEGATED: 'LANDLORD_ORDER_PAYMENT_DELEGATED',
+    LANDLORD_ORDER_PAYMENT_SUCCESS: 'LANDLORD_ORDER_PAYMENT_SUCCESS',
+
     USER_PASSWORD_RESET: 'USER_PASSWORD_RESET'
 };
 
 var _actions = {
     trigger: trigger,
     save: save,
-    NOTIFICATION:NOTIFICATION,
+    NOTIFICATION: NOTIFICATION,
     init: (_EmailHandler) => EmailHandler = _EmailHandler
 };
 Object.keys(NOTIFICATION).forEach(KEY => {
@@ -62,15 +62,21 @@ function LogSave(msg, type, data) {
 }
 
 function trigger(name, data, cb) {
-    actions.log('trigger=' + JSON.stringify(data));
-    if (!name) return cb && cb("name required");
-    if (!NOTIFICATION[name]) {
-        LogSave('Notification trigger name not found: '+name,'error',data);
-        return cb && cb("trigger notification not found: " + name);
+    try {
+        actions.log('trigger=' + JSON.stringify(data));
+        if (!name) return cb && cb("name required");
+        if (!NOTIFICATION[name]) {
+            LogSave('Notification trigger name not found: ' + name, 'error', data);
+            return cb && cb("trigger notification not found: " + name);
+        }
+        actions.log('trigger:routing-' + name + '=' + JSON.stringify(data));
+        data.__notificationType = name;
+        return EmailHandler[name](data, cb);
     }
-    actions.log('trigger:routing-' + name + '=' + JSON.stringify(data));
-    data.__notificationType = name;
-    return EmailHandler[name](data, cb);
+    catch (e) {
+        LogSave(e,'error',e);
+        return cb(e);
+    }
 }
 
 

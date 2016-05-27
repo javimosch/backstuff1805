@@ -5,7 +5,9 @@ var Log = require('../model/db.actions').create('Log');
 var statsActions = require('./ctrl.stats');
 var template = require('../utils/template');
 var sendEmail = require('../model/utils.mailing').sendEmail;
+
 var moment = require('moment');
+
 var btoa = require('btoa')
 var _ = require('lodash');
 var adminUrl = require('../model/utils').adminUrl;
@@ -215,7 +217,7 @@ function dateTime(d) {
 }
 
 function dateTime2(d){
-    return moment().format('[Le] dddd DD [de] MMMM YY [à] HH[h]mm')
+    return moment(d).format('[Le] dddd DD [de] MMMM YY [à] HH[h]mm')
 }
 
 
@@ -479,6 +481,7 @@ function USER_PASSWORD_RESET(data, cb) {
 
 function DIAGS_CUSTOM_EMAIL(data, cb, _subject, templateName, _to, _type) {
     actions.log(_type + '=START');
+    moment.locale('fr')
     var _user = data._user;
     var _order = data._order;
     var _admin = data._admin;

@@ -103,7 +103,7 @@ function send(opt, resCb) {
         attachment: opt.attachment || null,
         type: opt.__notificationType,
         html: html,
-        from: process.env.emailFrom || 'commande@diagnostical.fr',
+        from: process.env.emailFrom || 'webmaster@manitas-startup.com',
         to: opt.to || process.env.emailTo || 'arancibiajav@gmail.com',
         subject: opt.subject
     };

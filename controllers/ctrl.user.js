@@ -1,3 +1,4 @@
+var ctrl = require('../model/db.controller').create;
 var mongoose = require('../model/db').mongoose;
 var generatePassword = require("password-maker");
 //var User = mongoose.model('User');
@@ -15,6 +16,19 @@ var moment = require('moment');
 var Notif = require('./ctrl.notification');
 var NOTIFICATION = Notif.NOTIFICATION;
 //User.methods.name = ()=>{return };
+
+
+function everyAdmin(cb) {
+    ctrl('User').getAll({
+        userType: 'admin'
+    }, (err, _admins) => {
+        if (err) return cb(err);
+        _admins.forEach((_admin) => {
+            cb(null, _admin);
+        });
+    });
+}
+
 
 function balance(data, cb) {
     data.period = data.period || 'year';
@@ -172,51 +186,60 @@ function balance(data, cb) {
 }
 
 function save(data, cb) {
-    if(!_.includes(['diag','client','admin'],data.userType)){
-        return cb("invalid userType "+data.userType);
+    if (!_.includes(['diag', 'client', 'admin'], data.userType)) {
+        return cb("invalid userType " + data.userType);
     }
-    
+
     actions.createUpdate(data, cb, {
         email: data.email,
         userType: data.userType
     }, ['userType', 'email']).on('created', (err, _user) => {
-        
-        var notify = null;
         switch (_user.userType) {
             case 'admin':
-                notify = NOTIFICATION.ADMIN_ADMIN_ACCOUNT_CREATED;
+                {
+                    Notif.trigger(NOTIFICATION.ADMIN_ADMIN_ACCOUNT_CREATED, {
+                        _user: _user
+                    }, (_err, r) => handleNewAccount(_user, err, r));
+                }
                 break;
-            //case 'diag':
-             //   notify = NOTIFICATION.DIAG_NEW_ACCOUNT;
-              //  break;
             case 'client':
-                notify = NOTIFICATION.CLIENT_CLIENT_NEW_ACCOUNT;
+                {
+                    Notif.trigger(NOTIFICATION.CLIENT_CLIENT_NEW_ACCOUNT, {
+                        _user: _user
+                    }, (_err, r) => handleNewAccount(_user, err, r));
+
+                    everyAdmin((err, _admin) => {
+                        if (err) return cb && cb(err) || LogSave(JSON.stringify(err), 'error', err);
+                        Notif.trigger(NOTIFICATION.ADMIN_CLIENT_ACCOUNT_CREATED, {
+                            _user: _user,
+                            _admin: _admin
+                        }, (_err, r) => handleNewAccount(_user, err, r));
+                    })
+
+                }
                 break;
-        }
-        if (notify) {
-            Notif.trigger(notify,_user, (_err, r) => handleNewAccount(_user, err, r));
         }
     });
 }
 
-function LogSave(msg, type,data) {
+function LogSave(msg, type, data) {
     Log.save({
         message: msg,
         type: type,
-        data:data
+        data: data
     });
 }
 
 function handleNewAccount(_user, err, r) {
-    if(err) return LogSave(err.message,'error',err);
+    if (err) return LogSave(err.message, 'error', err);
     if (r && r.ok) {
         actions.log(_user.email + ':passwordSended');
         _user.passwordSended = true;
         _user.save();
     }
     else {
-        actions.log(_user.email + ' passwordSended email fail '+ JSON.stringify(r));
-        LogSave(r.message,'warning',r);
+        actions.log(_user.email + ' passwordSended email fail ' + JSON.stringify(r));
+        LogSave(r.message, 'warning', r);
     }
 }
 
@@ -269,7 +292,9 @@ function createClient(data, cb) {
 }
 
 function sendAccountsDetails(_user) {
-    Notif.CLIENT_CLIENT_NEW_ACCOUNT(_user, (err, r) => {
+    Notif.CLIENT_CLIENT_NEW_ACCOUNT({
+        _user:_user
+    }, (err, r) => {
         //async (write log on error)
         if (r.ok) {
             actions.log(_user.email + ' new account email sended' + JSON.stringify(r));
@@ -332,7 +357,7 @@ function passwordReset(data, cb) {
                 _user.password = generatePassword(8);
                 _user.save();
 
-                Notif.trigger('USER_PASSWORD_RESET',_user, (err, r) => {
+                Notif.trigger('USER_PASSWORD_RESET', _user, (err, r) => {
                     return cb(err, r);
                 })
 
@@ -364,5 +389,55 @@ module.exports = {
     toRules: actions.toRules,
     find: actions.find,
     create: create,
-    log: actions.log
+    log: actions.log,
+    _configure: (hook) => {
+        hook('preSave', preSave);
+    }
 };
+
+
+function preSave(data) {
+
+    //ADMIN#1 OK ctrl.user
+    if (data.notifications && data.userType == 'admin' && !data.notifications.ADMIN_ADMIN_ACCOUNT_CREATED) {
+        Notif.trigger(NOTIFICATION.ADMIN_ADMIN_ACCOUNT_CREATED, {
+            _user: data
+        });
+    }
+
+    //ADMIN//#2 OK ctrl.user
+    if (data.notifications && data.userType == 'client' && !data.notifications.ADMIN_CLIENT_ACCOUNT_CREATED) {
+        everyAdmin((err, _admin) => {
+            if (err) return LogSave(JSON.stringify(err), 'error', err);
+            Notif.trigger(NOTIFICATION.ADMIN_CLIENT_ACCOUNT_CREATED, {
+                _user: _.cloneDeep(data),
+                _admin: _admin
+            });
+        });
+        data.notifications.ADMIN_CLIENT_ACCOUNT_CREATED = true;
+    }
+
+
+    //DIAG//#1 OK ctrl.user app.diag.complete
+    if (data.notifications && data.userType == 'diag' && data.disabled == false && !data.notifications.DIAG_DIAG_ACCOUNT_CREATED) {
+        Notif.trigger(NOTIFICATION.DIAG_DIAG_ACCOUNT_CREATED, {
+            _user: data
+        });
+    }
+
+    //ADMIN//#3 OK ctrl.user
+    if (data.notifications && data.userType == 'diag' && data.disabled == true && !data.notifications.ADMIN_DIAG_ACCOUNT_CREATED) {
+        everyAdmin((err, _admin) => {
+            if (err) return LogSave(JSON.stringify(err), 'error', err);
+            
+            console.log(JSON.stringify(_admin));
+            
+            Notif.trigger(NOTIFICATION.ADMIN_DIAG_ACCOUNT_CREATED, {
+                _user: _.cloneDeep(data),
+                _admin: _admin
+            });
+        });
+    }
+
+    return data;
+}

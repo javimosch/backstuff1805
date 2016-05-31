@@ -1,11 +1,11 @@
+var name = 'task:diplomeExpirationCheck';
 var _ = require('lodash');
 var moment = require('moment');
-var User = require('./db.actions').create('User');
-var Order = require('./db.actions').create('Order');
-var name = 'diplomeExpirationCheck';
-var Log = require('./db.actions').create('Log');
-var Email = require('../controllers/ctrl.email');
-var Notif = require('../controllers/ctrl.notification');
+var User = require('../db.actions').create('User');
+var Order = require('../db.actions').create('Order');
+var Log = require('../db.actions').create('Log');
+var Email = require('../../controllers/ctrl.email');
+var Notif = require('../../controllers/ctrl.notification');
 var NOTIFICATION = Notif.NOTIFICATION;
 var log = (m) => {
     console.log(name + ': ' + m);
@@ -48,7 +48,7 @@ function handler(data, cb) {
                         else {
                             if (moment().diff(moment(info.expirationDate), 'days') < 31) {
                                 if (!_.isUndefined(info.expirationDateNotificationSended) && info.expirationDateNotificationSended === true) {
-                                    console.log(diag.email + ' ' + filename + ' has expire and alert was already sended.');
+                                    log(diag.email + ' ' + filename + ' has expire and alert was already sended.');
                                 }
                                 else {
                                     User.getAll({
@@ -99,5 +99,6 @@ module.exports = {
     name: name,
     interval: 1000 * 60 * 60, //each hour
     handler: handler,
-    startupInterval: true
+    startupInterval: false,
+    startupIntervalDelay:20000
 };

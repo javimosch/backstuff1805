@@ -1,3 +1,4 @@
+var ctrl = require('../model/db.controller').create;
 var Notification = require('../model/db.actions').create('Notification');
 var UserNotifications = require('../model/db.actions').create('UserNotifications');
 var User = require('../model/db.actions').create('User');
@@ -10,14 +11,47 @@ var S = require('string');
 var btoa = require('btoa')
 var _ = require('lodash');
 var modelName = 'text';
+var cbHell = require('../model/utils').cbHell;
 var actions = {
     log: (m) => {
         console.log(modelName.toUpperCase() + ': ' + m);
     }
 };
 module.exports = {
-    reportNotFound: reportNotFound
+    reportNotFound: reportNotFound,
+    import: _import,
+    importAll: _importAll
 };
+
+function _importAll(data, cb) {
+    actions.log('IMPORT_ALL:start');
+    if (!data.items) return cb('IMPORT_ALL:data.items-expected');
+    var hell = cbHell(data.items.length, () => {
+        actions.log('IMPORT_ALL:Success');
+        return cb(null, 'Success');
+    });
+    data.items.forEach(txt => {
+        _import(txt, hell.next);
+    });
+}
+
+function _import(data, cb) {
+    actions.log('IMPORT:start:'+data.code);
+    var Category = ctrl('Category');
+    var db = ctrl('Text');
+    if (data._category) {
+        Category.import(data._category, (err, _category) => {
+            if (err) return cb(err);
+            data._category = _category;
+            data.__match=['code'];
+            return db.save(data, db);
+        })
+    }
+    else {
+        data.__match=['code'];
+        return db.save(data, db);
+    }
+}
 
 function reportNotFound(data, cb) {
     actions.log('reportNotFound=' + JSON.stringify(data));

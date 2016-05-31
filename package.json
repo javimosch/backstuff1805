@@ -1,7 +1,4 @@
 {
-  "name": "backstuff1805",
-  "version": "1.2.8",
-  "description": "",
   "scripts": {
     "start": "heroku local web",
     "test": "mocha",
@@ -15,6 +12,10 @@
   "main": "index.js",
   "author": "arancibiajav@gmail.com",
   "license": "ISC",
+  "name": "backstuff",
+  "version": "1.2.8",
+  "description": "web-dev-tool for restfull apis  nodejs/express/mongodb",
+  "author": "arancibiajav@gmail.com",
   "dependencies": {
     "atob": "^2.0.3",
     "body-parser": "^1.14.2",

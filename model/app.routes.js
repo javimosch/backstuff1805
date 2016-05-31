@@ -1,3 +1,4 @@
+var mime = require('mime-types')
 var mongoose = require('./db').mongoose;
 var _ = require('lodash');
 var dbController = require('./db.controller');
@@ -24,13 +25,14 @@ exports.configure = function(app) {
         var data = req.params.data;
         var actions = dbController.create(controller);
         if (!actions[action]) {
-            res.set('Content-Type', 'text/html'); 
-            res.send(new Buffer('<p>Invalid controller'+controller+" action "+action+'</p>'));
-        }else{
+            res.set('Content-Type', 'text/html');
+            res.send(new Buffer('<p>Invalid controller' + controller + " action " + action + '</p>'));
+        }
+        else {
             return actions[action](data, actions.result(res), req, res);
         }
     });
-    
+
     app.post('/ctrl/:controller/:action', function(req, res) {
         var controller = req.params.controller;
         var action = req.params.action;
@@ -71,12 +73,17 @@ exports.configure = function(app) {
         File.get({
             _id: req.params._id
         }, (_err, data) => {
-            res.setHeader('Content-disposition', 'attachment; filename=' + data.filename);
-            res.setHeader('Content-Type', 'application/pdf');
+           
+           // res.setHeader('Content-disposition', 'attachment; filename=' + data.filename);
+           // res.setHeader('Content-Type', 'application/pdf');
+
+            res.setHeader("content-type", "application/pdf");
+            res.setHeader('Content-disposition', ' filename=' + (data.filename || 'file') + '.pdf');
+
             data.stream.pipe(res);
         });
     });
-    
+
 
     console.log('ROUTING-OK');
 };

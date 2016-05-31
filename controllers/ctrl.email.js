@@ -31,6 +31,7 @@ function everyAdmin(cb) {
 }
 
 var EXPORT_ACTIONS = {
+    BA_ADMIN_CONTACT_FORM:BA_ADMIN_CONTACT_FORM,
 
     ADMIN_ADMIN_ACCOUNT_CREATED: ADMIN_ADMIN_ACCOUNT_CREATED,
     ADMIN_CLIENT_ACCOUNT_CREATED: ADMIN_CLIENT_ACCOUNT_CREATED,
@@ -224,7 +225,26 @@ function dateTime2(d){
 
 
 
-
+function BA_ADMIN_CONTACT_FORM(data,cb){
+    actions.log('BA_ADMIN_CONTACT_FORM=START');
+    moment.locale('es')
+    var replaceData = {
+        '$MESSAGE': data.message||'Ninguno',
+        '$EMAIL':data.email||'Desconocido',
+        '$MOTIVE':data.motive||'Desconocido',
+        //'$BACKOFFICE_URL': adminUrl('login?email=' + _user.email + '&k=' + btoa(_user.password||'dummy'))
+    };
+    send({
+        attachment: data.attachment || null,
+        __notificationType: 'BA_ADMIN_CONTACT_FORM',
+        _user: null,
+        to: 'arancibiajav@gmail.com',
+        subject: 'BA - Contact form',
+        templateName: 'BA_ADMIN_CONTACT_FORM',
+        templateReplace: replaceData,
+        cb: cb
+    });
+}
 
 
 

@@ -184,7 +184,7 @@ function syncStripe(data, cb) {
         if (cb) {
             cb(null, {
                 ok: true,
-                message: "Sync in progress, see server console for more details.",
+                message: "appc in progress, see server console for more details.",
                 result: null
             });
         }
@@ -440,7 +440,7 @@ function orderPopulate(data, cb) {
             _diag: "email firstName lastName password"
         }
     }, (_err, _order) => cb(_order));
-}
+};
 
 function orderDiag(_order, cb) {
     UserAction.get({
@@ -581,6 +581,7 @@ module.exports = {
     pay: pay,
     syncStripe: syncStripe,
     confirm: confirm,
+    populate:orderPopulate,
     //heredado
     existsById: actions.existsById,
     existsByField: actions.existsByField,

@@ -3,6 +3,18 @@ var fs = require("fs"),
 
 var moment = require('moment');
 
+
+
+exports.has = (data,props)=>{
+    for(var x in props){
+        if(typeof data[props[x]]==='undefined') return false;
+        if(data[props[x]]==undefined) return false;
+    }
+    return true;
+};
+
+
+
 exports.formatTime = (d)=>{
     return moment(d).format('HH:mm');
 };

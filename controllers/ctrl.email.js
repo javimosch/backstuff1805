@@ -5,8 +5,11 @@ var Log = require('../model/db.actions').create('Log');
 var statsActions = require('./ctrl.stats');
 var template = require('../utils/template');
 var sendEmail = require('../model/utils.mailing').sendEmail;
+var _utils = require('../model/utils');
 
-var moment = require('moment');
+
+var moment = require('moment-timezone');
+
 
 var btoa = require('btoa')
 var _ = require('lodash');
@@ -208,16 +211,18 @@ function send(opt, resCb) {
     }
 }
 
+var TIME_ZONE = 'Europe/Paris';
+
 function time(d) {
-    return moment(d).format('HH[h]mm');
+    return moment(d).tz(TIME_ZONE).format('HH[h]mm');
 }
 
 function dateTime(d) {
-    return moment(d).format('DD-MM-YY HH[h]mm');
+    return moment(d).tz(TIME_ZONE).format('DD-MM-YY HH[h]mm');
 }
 
 function dateTime2(d){
-    return moment(d).format('[Le] dddd DD [de] MMMM YY [à] HH[h]mm')
+    return moment(d).tz(TIME_ZONE).format('[Le] dddd DD [de] MMMM YY [à] HH[h]mm')
 }
 
 
@@ -423,7 +428,17 @@ function DIAG_RDV_CONFIRMED(data, cb) {
 
 ////LANDLORD//#1 OK app.booking app.order
 function LANDLORD_ORDER_PAYMENT_DELEGATED(data, cb) {
-    
+    /*
+    if(!_utils.has(data,['_order']))    return cb('_order required');
+    if(!_utils.has(data,['_user']))     return cb('_user required');
+    if(!_utils.has(data._order,['_client']))    return cb('_order _client required');
+    if(!_utils.has(data._order,['_diag']))    return cb('_order _diag required');
+    if(!_utils.has(data._order._client,['companyName'])){
+        return ctrl('Order').populate(data._order,(_order)=>{
+            data._order = _order;
+            LANDLORD_ORDER_PAYMENT_DELEGATED(data,cb);
+        });
+    }*/
     
     
     actions.log('LANDLORD_ORDER_PAYMENT_DELEGATED:start');
@@ -454,7 +469,13 @@ function LANDLORD_ORDER_PAYMENT_DELEGATED(data, cb) {
     function _next() {
 
         CLIENT_ORDER_DELEGATED(data,null);
-        ADMIN_ORDER_PAYMENT_DELEGATED(data, null); //async no cb
+        
+        everyAdmin((_admin)=>{
+            ADMIN_ORDER_PAYMENT_DELEGATED({
+                _user:_admin,
+                _order:data._order
+            }, null); 
+        });
 
         //requires: _user _order
         var subject = 'Diagnostic Réservé en attente de paiement';
@@ -525,6 +546,8 @@ function DIAGS_CUSTOM_EMAIL(data, cb, _subject, templateName, _to, _type) {
     }
     if (_order) {
         Object.assign(replaceData, {
+            '$CLIENT_LANDLORD_DISPLAY': (_order._client.clientType=='landlord')?'block':'none',
+            '$CLIENT_COMPANY_DISPLAY': (_order._client.clientType!=='landlord')?'block':'none',
             '$CLIENT_COMPANY_NAME': _order._client.companyName,
             '$CLIENT_FULL_NAME': _order._client.firstName + ' ' + _order._client.lastName,
             '$CLIENT_FIRSTNAME': _order._client.firstName,

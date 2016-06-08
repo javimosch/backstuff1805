@@ -3,7 +3,11 @@ Diagnostiqueur : $DIAG_FIRSTNAME
 <br>
 Adresse :$ORDER_ADDRESS
 <br>
-Commande passée par : $CLIENT_COMPANY_NAME / $CLIENT_FULL_NAME / $CLIENT_EMAIL / $CLIENT_PHONE_NUMBER
+Commande passée par : 
+    <span style="display:$CLIENT_HAS_COMPANY_NAME;">$CLIENT_COMPANY_NAME /</span> 
+    <span style="display:$CLIENT_HAS_NAME;">$CLIENT_FULL_NAME /</span> 
+    $CLIENT_EMAIL 
+    <span style="display:$CLIENT_HAS_PHONE;"> / $CLIENT_PHONE_NUMBER /</span> 
 <br>
 Propriétaire : $LANDLORD_FULLNAME / $LANDLORD_EMAIL / $LANDLORD_PHONE
 <br>

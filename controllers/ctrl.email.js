@@ -221,13 +221,38 @@ function dateTime(d) {
     return moment(d).tz(TIME_ZONE).format('DD-MM-YY HH[h]mm');
 }
 
-function dateTime2(d){
+function dateTime2(d) {
     return moment(d).tz(TIME_ZONE).format('[Le] dddd DD [de] MMMM YY [à] HH[h]mm')
 }
 
 
 
 
+function generateInvoiceAttachmentIfNecessary(data, t, cb) {
+    if (data.attachmentPDFHTML) {
+        actions.log(t + ':attachment-build');
+        ctrl('Pdf').generate({
+            fileName: 'invoice_' + Date.now(),
+            html: data.attachmentPDFHTML
+        }, (err, res) => {
+            if (err) return cb();
+            if (res.ok) {
+                actions.log(t + ':attachment-ok');
+                data.attachment = {
+                    path: process.cwd() + '/www/temp/' + res.fileName,
+                    fileName: res.fileName
+                };
+                return cb();
+            }
+            else {
+                return cb();
+            }
+        })
+    }
+    else {
+        return cb();
+    }
+}
 
 
 
@@ -342,10 +367,10 @@ function ADMIN_NEW_CONTACT_FORM_MESSAGE_SINGLE(data, cb) {
 
 //ADMIN//#6 OK ctrl.email
 function ADMIN_ORDER_PAYMENT_DELEGATED(data, cb) {
-     //requires: _user _order
-     var subject = dateTime(data._order.start) + '/' + data._order.address + " Paiement Délégué";
-     DIAGS_CUSTOM_NOTIFICATION(
-         NOTIFICATION.ADMIN_ORDER_PAYMENT_DELEGATED, data, cb, subject, data._user.email, data._order, 'Order');
+    //requires: _user _order
+    var subject = dateTime(data._order.start) + '/' + data._order.address + " Paiement Délégué";
+    DIAGS_CUSTOM_NOTIFICATION(
+        NOTIFICATION.ADMIN_ORDER_PAYMENT_DELEGATED, data, cb, subject, data._user.email, data._order, 'Order');
 }
 
 
@@ -385,17 +410,23 @@ function CLIENT_CLIENT_NEW_ACCOUNT(data, cb) {
 
 //CLIENT//#2 OK ctrl.email
 function CLIENT_ORDER_DELEGATED(data, cb) {
-    //requires: _user _order
-    var subject = 'RDV en attente de paiement: ' + data._order.address + '/' + dateTime(data._order.start);
-    DIAGS_CUSTOM_NOTIFICATION(
-        NOTIFICATION.CLIENT_ORDER_DELEGATED, data, cb, subject, data._user.email, data._order, 'Order');
+
+    generateInvoiceAttachmentIfNecessary(data, NOTIFICATION.CLIENT_ORDER_DELEGATED, () => {
+        //requires: _user _order
+        var subject = 'RDV en attente de paiement: ' + data._order.address + '/' + dateTime(data._order.start);
+        DIAGS_CUSTOM_NOTIFICATION(
+            NOTIFICATION.CLIENT_ORDER_DELEGATED, data, cb, subject, data._user.email, data._order, 'Order');
+    });
 }
+
 
 //CLIENT//#3 OK ctrl.order
 function CLIENT_ORDER_PAYMENT_SUCCESS(data, cb) {
-    //requires: _user _order
-    DIAGS_CUSTOM_NOTIFICATION(
-        NOTIFICATION.CLIENT_ORDER_PAYMENT_SUCCESS, data, cb, 'Rendez-vous confirmé', data._user.email, data._order, 'Order');
+    generateInvoiceAttachmentIfNecessary(data, NOTIFICATION.CLIENT_ORDER_PAYMENT_SUCCESS, () => {
+        //requires: _user _order
+        DIAGS_CUSTOM_NOTIFICATION(
+            NOTIFICATION.CLIENT_ORDER_PAYMENT_SUCCESS, data, cb, 'Rendez-vous confirmé', data._user.email, data._order, 'Order');
+    });
 }
 
 
@@ -428,60 +459,20 @@ function DIAG_RDV_CONFIRMED(data, cb) {
 
 ////LANDLORD//#1 OK app.booking app.order
 function LANDLORD_ORDER_PAYMENT_DELEGATED(data, cb) {
-    /*
-    if(!_utils.has(data,['_order']))    return cb('_order required');
-    if(!_utils.has(data,['_user']))     return cb('_user required');
-    if(!_utils.has(data._order,['_client']))    return cb('_order _client required');
-    if(!_utils.has(data._order,['_diag']))    return cb('_order _diag required');
-    if(!_utils.has(data._order._client,['companyName'])){
-        return ctrl('Order').populate(data._order,(_order)=>{
-            data._order = _order;
-            LANDLORD_ORDER_PAYMENT_DELEGATED(data,cb);
-        });
-    }*/
-    
-    
-    actions.log('LANDLORD_ORDER_PAYMENT_DELEGATED:start');
-    if (data.attachmentPDFHTML) {
-        actions.log('LANDLORD_ORDER_PAYMENT_DELEGATED:attachment-build');
-        ctrl('Pdf').generate({
-            fileName: 'invoice_' + Date.now(),
-            html: data.attachmentPDFHTML
-        }, (err, res) => {
-            if (err) return _next();
-            if (res.ok) {
-                actions.log('LANDLORD_ORDER_PAYMENT_DELEGATED:attachment-ok');
-                data.attachment = {
-                    path: process.cwd() + '/www/temp/' + res.fileName,
-                    fileName: res.fileName
-                };
-                return _next();
-            }
-            else {
-                return _next();
-            }
-        })
-    }
-    else {
-        return _next();
-    }
-
-    function _next() {
-
-        CLIENT_ORDER_DELEGATED(data,null);
-        
-        everyAdmin((_admin)=>{
+    generateInvoiceAttachmentIfNecessary(data, NOTIFICATION.LANDLORD_ORDER_PAYMENT_DELEGATED, () => {
+        delete data.attachmentPDFHTML;
+        CLIENT_ORDER_DELEGATED(data, null);
+        everyAdmin((_admin) => {
             ADMIN_ORDER_PAYMENT_DELEGATED({
-                _user:_admin,
-                _order:data._order
-            }, null); 
+                _user: _admin,
+                _order: data._order
+            }, null);
         });
-
         //requires: _user _order
         var subject = 'Diagnostic Réservé en attente de paiement';
         DIAGS_CUSTOM_NOTIFICATION(
             NOTIFICATION.LANDLORD_ORDER_PAYMENT_DELEGATED, data, cb, subject, data._order.landLordEmail, data._order, 'Order');
-    }
+    });
 }
 
 
@@ -508,7 +499,7 @@ function DIAGS_CUSTOM_EMAIL(data, cb, _subject, templateName, _to, _type) {
     var _admin = data._admin;
     var _client = data._client;
     var replaceData = {
-        '$BACKOFFICE_URL': adminUrl('login?email=' + _user.email + '&k=' + btoa(_user.password||'dummy'))
+        '$BACKOFFICE_URL': adminUrl('login?email=' + _user.email + '&k=' + btoa(_user.password || 'dummy'))
     };
     if (_user) {
         Object.assign(replaceData, {
@@ -546,12 +537,15 @@ function DIAGS_CUSTOM_EMAIL(data, cb, _subject, templateName, _to, _type) {
     }
     if (_order) {
         Object.assign(replaceData, {
-            '$CLIENT_LANDLORD_DISPLAY': (_order._client.clientType=='landlord')?'block':'none',
-            '$CLIENT_COMPANY_DISPLAY': (_order._client.clientType!=='landlord')?'block':'none',
+            '$CLIENT_LANDLORD_DISPLAY': (_order._client.clientType == 'landlord') ? 'block' : 'none',
+            '$CLIENT_COMPANY_DISPLAY': (_order._client.clientType !== 'landlord') ? 'block' : 'none',
+            '$CLIENT_HAS_COMPANY_NAME': (_order._client.companyName) ? 'block' : 'none',
             '$CLIENT_COMPANY_NAME': _order._client.companyName,
-            '$CLIENT_FULL_NAME': _order._client.firstName + ' ' + _order._client.lastName,
+            '$CLIENT_HAS_NAME': (_order._client.firstName) ? 'block' : 'none',
+            '$CLIENT_FULL_NAME': _order._client.firstName + ' ' + (_order._client.lastName || ''),
             '$CLIENT_FIRSTNAME': _order._client.firstName,
-            '$CLIENT_PHONE_NUMBER': _order._client.cellPhone,
+            '$CLIENT_HAS_PHONE': (_order._client.cellPhone || _order._client.fixedTel) ? 'block' : 'none',
+            '$CLIENT_PHONE_NUMBER': _order._client.cellPhone || _order._client.fixedTel,
             '$CLIENT_EMAIL': _order._client.email,
             '$DIAG_EMAIL': _order._diag.email,
             '$DIAG_FULL_NAME': _order._diag.firstName + ' ' + _order._diag.lastName,
@@ -563,10 +557,10 @@ function DIAGS_CUSTOM_EMAIL(data, cb, _subject, templateName, _to, _type) {
             '$ORDER_DIAG_LIST': htmlOrderSelectedDiagsList(_order),
             '$ORDER_ADDRESS': _order.address,
             '$ORDER_KEYS_INFO': _order.keysAddress + ' / ' + dateTime2(_order.keysTimeFrom) + ' - ' + time(_order.keysTimeFrom),
-            
+
             '$ORDER_OBSERVATION': _order.obs,
-            '$OBS_DISPLAY': (_order.obs)?'block':'none',
-            
+            '$OBS_DISPLAY': (_order.obs) ? 'block' : 'none',
+
             '$ORDER_PRICE_TTC': _order.price,
             '$ORDER_PRICE_HT': _order.priceHT,
             '$ORDER_DIAG_REMUNERATION_HT': _order.diagRemunerationHT,
@@ -592,16 +586,16 @@ function DIAGS_CUSTOM_EMAIL(data, cb, _subject, templateName, _to, _type) {
     });
 }
 
-function diagNameConvertion(key){
-    if(key=='electricity') return 'Electricité';
-    if(key=='parasitaire') return 'Parasitaire';
-    if(key=='gaz') return 'Gaz';
-    if(key=='termites') return 'Termites';
-    if(key=='ernt') return 'État des risques naturels, miniers et technologiques';
-    if(key=='loiCarrez') return 'Carrez';
-    if(key=='crep') return 'Plomb';
-    if(key=='dta') return 'Amiante';
-    if(key=='dpe') return 'DPE';
+function diagNameConvertion(key) {
+    if (key == 'electricity') return 'Electricité';
+    if (key == 'parasitaire') return 'Parasitaire';
+    if (key == 'gaz') return 'Gaz';
+    if (key == 'termites') return 'Termites';
+    if (key == 'ernt') return 'État des risques naturels, miniers et technologiques';
+    if (key == 'loiCarrez') return 'Carrez';
+    if (key == 'crep') return 'Plomb';
+    if (key == 'dta') return 'Amiante';
+    if (key == 'dpe') return 'DPE';
     return key;
 }
 
@@ -622,4 +616,3 @@ function dblog(msg, type) {
         type: type
     });
 }
-

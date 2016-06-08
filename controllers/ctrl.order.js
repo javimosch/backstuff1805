@@ -395,21 +395,28 @@ function save(data, cb) {
 
 
                 if (prevStatus !== 'prepaid' && _order.status === 'prepaid') {
-                    //CLIENT_ORDER_PAYMENT_SUCCESS //CLIENT//#3
+                    
                     UserAction.get({
                         _id: _order._client._id || _order._client
                     }, (_err, _client) => {
-                        Notif.trigger(NOTIFICATION.CLIENT_ORDER_PAYMENT_SUCCESS, {
-                            _user: _client,
-                            _order: _order
-                        });
-                        //LANDLORD_ORDER_PAYMENT_SUCCESS //LANDLORD//#2
-                        if (_order.landLordEmail) {
-                            Notif.trigger(NOTIFICATION.LANDLORD_ORDER_PAYMENT_SUCCESS, {
+
+                        if (_order.notifications && _order.notifications.LANDLORD_ORDER_PAYMENT_DELEGATED) {
+                            //LANDLORD_ORDER_PAYMENT_SUCCESS //LANDLORD//#2
+                            if (_order.landLordEmail) {
+                                Notif.trigger(NOTIFICATION.LANDLORD_ORDER_PAYMENT_SUCCESS, {
+                                    _user: _client,
+                                    _order: _order
+                                });
+                            }
+                        }
+                        else {
+                            //CLIENT_ORDER_PAYMENT_SUCCESS //CLIENT//#3
+                            Notif.trigger(NOTIFICATION.CLIENT_ORDER_PAYMENT_SUCCESS, {
                                 _user: _client,
                                 _order: _order
                             });
                         }
+
                     });
                 }
 
@@ -581,7 +588,7 @@ module.exports = {
     pay: pay,
     syncStripe: syncStripe,
     confirm: confirm,
-    populate:orderPopulate,
+    populate: orderPopulate,
     //heredado
     existsById: actions.existsById,
     existsByField: actions.existsByField,

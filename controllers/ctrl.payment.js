@@ -31,6 +31,8 @@ function associatedOrder(data, cb) {
         _charge(data.source);
     }
     else {
+          cb(null, null); //not a charge (refund)
+        /*
         stripe.refunds.retrieve(
             data.source,
             function(err, refund) {
@@ -40,27 +42,31 @@ function associatedOrder(data, cb) {
                         _charge(refund.charge);
                     }
                     else {
-                        cb('Refund do not have a charge related.', refund);
+                        cb(null, null);
                     }
                 }
                 else {
-                    cb('Refund not found.', refund);
+                    cb(null, null);
                 }
             }
         );
+        */
     }
 
     function _charge(id) {
         stripe.charges.retrieve(
             id,
             function(err, charge) {
-                if(err) return cb(err);
+                if (err) return cb(err);
+                if(!charge) return cb(null,null);
                 actions.log('associatedOrder=chage=metadata=' + JSON.stringify(charge.metadata));
                 var _id = charge.metadata._order;
                 var _orderDescription = charge.metadata._orderDescription;
                 var _orderURL = charge.metadata._orderURL;
                 //Order.get({ _id: _id }, (err, _order) => {
                 cb(null, {
+                    charge:charge,
+                    metadata: charge.metadata,
                     _order: {
                         description: _orderDescription,
                         _id: _id
@@ -92,32 +98,71 @@ function syncTransactions(data, cb) {
         });
         //-- set _order field in each transaction
         var _associateHell = utils.cbHell(transactions.length, () => {
+            toRemove.forEach(index=>{
+                transactions.splice(index,1);
+            })
+            console.log('syncTransactions - _associateHell - end');
             _save();
         });
-        
-        transactions.forEach((t,tx) => {
+
+        var toRemove = [];
+        transactions.forEach((t, tx) => {
             associatedOrder({
                 source: t.source
-            }, (_err, r) => {
+            }, (_err, charge) => {
                 if (err) {
-                    err.result = r;
-                    LogSave('syncTransactions - associatedOrder - error', err);
+                    err.result = charge;
+                    LogSave('syncTransactions - associatedOrder - fn  error', err);
                 }
-                transactions[tx]._order = r._order._id;
-                console.log('syncTransactions - order - ',transactions[tx]._order);
-                _associateHell.next();
+                if(!charge){
+                    toRemove.push(tx);
+                    console.log('syncTransactions - associatedOrder - no-charge - skip', transactions[tx]._order);
+                    return _associateHell.next();
+                }
+                
+                if(!charge._order || !charge._order._id){
+                   LogSave('stripe charge without metadata', charge); 
+                }
+                
+                transactions[tx]._order = charge._order._id;
+                console.log('syncTransactions - associatedOrder - order get - ', transactions[tx]._order);
+
+                if (data._diag && charge._order && charge._order._id) {
+                    
+                    ctrl('Order').get({
+                        _id: charge._order._id,
+                        __select: "_diag",
+                    }, (err, _order) => {
+                        if (err) {
+                            err.result = charge;
+                            LogSave('syncTransactions - associatedOrder -  order get diag - error', err);
+                        }else{
+                            transactions[tx]._user = _order._diag;
+                        }
+                        _associateHell.next();
+                    });
+                    
+                }else{
+                    _associateHell.next();
+                }
+
+                
             });
         });
         //-- removes temporal items and save them again.
         function _save() {
+            console.log('syncTransactions - StripeTransaction - removeWhen');
             ctrl('StripeTransaction').removeWhen({
                 _user: data._user
             }, (err, r) => {
+                console.log('syncTransactions - StripeTransaction - ok?',!err);
                 if (err) return cb(err, false);
                 var hell = utils.cbHell(transactions.length, () => {
+                    console.log('syncTransactions - success');
                     return cb(err, true);
                 });
-                transactions.forEach(transaction => {
+                transactions.forEach((transaction,tx) => {
+                    console.log('syncTransactions - StripeTransaction - saving',tx);
                     ctrl('StripeTransaction').save(transaction, (err, r) => {
                         if (err) {
                             LogSave('syncTransactions - StripeTransaction:save', err);

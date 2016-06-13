@@ -39,6 +39,7 @@ function cbHell(quantity, cb) {
         call: () => cb(),
         next: () => {
             quantity--;
+            console.log('backstuff-utils-cbHell: '+quantity+' threads left.');
             if (quantity === 0) cb();
         }
     }

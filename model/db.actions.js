@@ -288,6 +288,9 @@ exports.create = function(modelName, m) {
     }
 
     function remove(data, cb) {
+        data = {
+            _id:data._id
+        };
         log('remove=' + JSON.stringify(data));
         check(data, ['_id'], (err, r) => {
             if (err) return cb(err, null);

@@ -1,6 +1,7 @@
 var fs = require("fs"),
     json;
-
+var urlencode = require('urlencode2');
+var urldecode = require('urldecode');
 var moment = require('moment');
 
 
@@ -13,7 +14,8 @@ exports.has = (data,props)=>{
     return true;
 };
 
-
+exports.encodeURIComponent = urlencode;
+exports.decodeURIComponent = urldecode;
 
 exports.formatTime = (d)=>{
     return moment(d).format('HH:mm');
@@ -33,6 +35,8 @@ exports.getFile = (file) => readFileSync(file,undefined, false);
 function replaceAll(word,search, replacement) {
     return word.replace(new RegExp(search, 'g'), replacement);
 };
+
+exports.replaceAll = replaceAll;
 
 function cbHell(quantity, cb) {
     return {

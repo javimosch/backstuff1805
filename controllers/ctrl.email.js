@@ -242,15 +242,15 @@ function generateInvoiceAttachmentIfNecessary(data, t, cb) {
                     path: process.cwd() + '/www/temp/' + res.fileName,
                     fileName: res.fileName
                 };
-                return cb();
+                return cb(data);
             }
             else {
-                return cb();
+                return cb(data);
             }
         })
     }
     else {
-        return cb();
+        return cb(data);
     }
 }
 
@@ -411,7 +411,7 @@ function CLIENT_CLIENT_NEW_ACCOUNT(data, cb) {
 //CLIENT//#2 OK ctrl.email
 function CLIENT_ORDER_DELEGATED(data, cb) {
 
-    generateInvoiceAttachmentIfNecessary(data, NOTIFICATION.CLIENT_ORDER_DELEGATED, () => {
+    generateInvoiceAttachmentIfNecessary(data, NOTIFICATION.CLIENT_ORDER_DELEGATED, (data) => {
         //requires: _user _order
         var subject = 'RDV en attente de paiement: ' + data._order.address + '/' + dateTime(data._order.start);
         DIAGS_CUSTOM_NOTIFICATION(
@@ -422,7 +422,7 @@ function CLIENT_ORDER_DELEGATED(data, cb) {
 
 //CLIENT//#3 OK ctrl.order
 function CLIENT_ORDER_PAYMENT_SUCCESS(data, cb) {
-    generateInvoiceAttachmentIfNecessary(data, NOTIFICATION.CLIENT_ORDER_PAYMENT_SUCCESS, () => {
+    generateInvoiceAttachmentIfNecessary(data, NOTIFICATION.CLIENT_ORDER_PAYMENT_SUCCESS, (data) => {
         //requires: _user _order
         DIAGS_CUSTOM_NOTIFICATION(
             NOTIFICATION.CLIENT_ORDER_PAYMENT_SUCCESS, data, cb, 'Rendez-vous confirmé', data._user.email, data._order, 'Order');
@@ -459,7 +459,7 @@ function DIAG_RDV_CONFIRMED(data, cb) {
 
 ////LANDLORD//#1 OK app.booking app.order
 function LANDLORD_ORDER_PAYMENT_DELEGATED(data, cb) {
-    generateInvoiceAttachmentIfNecessary(data, NOTIFICATION.LANDLORD_ORDER_PAYMENT_DELEGATED, () => {
+    generateInvoiceAttachmentIfNecessary(data, NOTIFICATION.LANDLORD_ORDER_PAYMENT_DELEGATED, (data) => {
         delete data.attachmentPDFHTML;
         CLIENT_ORDER_DELEGATED(data, null);
         everyAdmin((_admin) => {

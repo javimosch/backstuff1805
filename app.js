@@ -14,6 +14,8 @@ var port = process.env.PORT || 5000;
 var LOCAL = process.env.LOCAL && process.env.LOCAL.toString() == '1' || false;
 var config = JSON.parse(fs.readFileSync(process.cwd() + '/package.json'));
 var apiMessage = 'Backstuff runing version ' + config.version + '!';
+var https = require('https');
+var http = require('http');
 //
 //
 //CORS
@@ -65,8 +67,23 @@ configureProgrammedTasks(app);
 //STATIC
 app.use('/', express.static('./www'));
 //START
-app.listen(port, function() {
+
+
+if (process.env.SSL_CERT) {
+	//HTTPS
+	var options = {
+		key: fs.readFileSync(process.env.SSL_KEY),
+		cert: fs.readFileSync(process.env.SSL_CERT),
+	};
+	https.createServer(options, app).listen(port, listening);
+}
+else {
+	//HTTP
+	app.listen(port, listening);
+}
+
+ function listening() {
     console.log(apiMessage);
     console.log('adminURL' + process.env.adminURL);
     console.log('backstuff-API listening on port ' + port + '!');
-});
+}

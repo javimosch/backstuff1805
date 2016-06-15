@@ -1,8 +1,7 @@
-var diplomeExpirationTask   = require('./tasks/task.diplomeExpiration');
-var deleteTemporalFiles     = require('./tasks/task.deleteTemporalFiles');
 var tasks = [
-    diplomeExpirationTask,
-    deleteTemporalFiles
+    require('./tasks/task.diplomeExpiration'),
+    require('./tasks/task.deleteTemporalFiles'),
+    require('./tasks/task.diags-remove-unpaid-orders')
 ];
 exports.configure = (app) => {
     tasks.forEach((t) => {
@@ -18,13 +17,14 @@ exports.configure = (app) => {
         setInterval(() => {
             loop
         }, t.interval);
-        
-        
-        if(t.startupInterval){
+
+
+        if (t.startupInterval) {
             loop();
-        }else{
-            if(t.startupIntervalDelay){
-                setTimeout(loop,t.startupIntervalDelay);
+        }
+        else {
+            if (t.startupIntervalDelay) {
+                setTimeout(loop, t.startupIntervalDelay || 0);
             }
         }
     });

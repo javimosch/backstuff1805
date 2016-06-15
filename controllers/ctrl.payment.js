@@ -1,3 +1,6 @@
+var ctrl = require('../model/db.controller').create;
+var utils = require('../model/utils');
+//
 var Order = require('../model/db.actions').create('Order');
 var User = require('../model/db.actions').create('User');
 var getFile = require('../model/utils').getFile;
@@ -22,11 +25,14 @@ var actions = {
 
 //require: _id (charge or refound)
 function associatedOrder(data, cb) {
+    actions.log('associatedOrder=' + JSON.stringify(data));
     //data.source
     if (data.source.indexOf('ch') !== -1) {
         _charge(data.source);
     }
     else {
+          cb(null, null); //not a charge (refund)
+        /*
         stripe.refunds.retrieve(
             data.source,
             function(err, refund) {
@@ -36,25 +42,31 @@ function associatedOrder(data, cb) {
                         _charge(refund.charge);
                     }
                     else {
-                        cb('Refund do not have a charge related.', refund);
+                        cb(null, null);
                     }
                 }
                 else {
-                    cb('Refund not found.', refund);
+                    cb(null, null);
                 }
             }
         );
+        */
     }
 
     function _charge(id) {
         stripe.charges.retrieve(
             id,
             function(err, charge) {
+                if (err) return cb(err);
+                if(!charge) return cb(null,null);
+                actions.log('associatedOrder=chage=metadata=' + JSON.stringify(charge.metadata));
                 var _id = charge.metadata._order;
                 var _orderDescription = charge.metadata._orderDescription;
                 var _orderURL = charge.metadata._orderURL;
                 //Order.get({ _id: _id }, (err, _order) => {
                 cb(null, {
+                    charge:charge,
+                    metadata: charge.metadata,
                     _order: {
                         description: _orderDescription,
                         _id: _id
@@ -66,12 +78,115 @@ function associatedOrder(data, cb) {
     }
 }
 
+function syncTransactions(data, cb) {
+    actions.log('syncTransactions=' + JSON.stringify(data));
+    if (!data._user) return cb('_user required');
+    //
+    stripe.balance.listTransactions({}, function(err, transactions) {
+        if (err) return cb(err, false);
+        //retreive transactions from stripe and customize fields.
+        transactions = transactions.data.map(item => {
+            item._user = data._user;
+            item.created = moment(item.created * 1000);
+            item.amount = item.amount / 100;
+            //
+            var fee = 0;
+            item.fee_details.forEach(f => fee += f.amount);
+            item.stripeFee = fee / 100;
+            //
+            return item;
+        });
+        //-- set _order field in each transaction
+        var _associateHell = utils.cbHell(transactions.length, () => {
+            toRemove.forEach(index=>{
+                transactions.splice(index,1);
+            })
+            console.log('syncTransactions - _associateHell - end');
+            _save();
+        });
+
+        var toRemove = [];
+        transactions.forEach((t, tx) => {
+            associatedOrder({
+                source: t.source
+            }, (_err, charge) => {
+                if (err) {
+                    err.result = charge;
+                    LogSave('syncTransactions - associatedOrder - fn  error', err);
+                }
+                if(!charge){
+                    toRemove.push(tx);
+                    console.log('syncTransactions - associatedOrder - no-charge - skip', transactions[tx]._order);
+                    return _associateHell.next();
+                }
+                
+                if(!charge._order || !charge._order._id){
+                   LogSave('stripe charge without metadata', charge); 
+                }
+                
+                transactions[tx]._order = charge._order._id;
+                console.log('syncTransactions - associatedOrder - order get - ', transactions[tx]._order);
+
+                if (data._diag && charge._order && charge._order._id) {
+                    
+                    ctrl('Order').get({
+                        _id: charge._order._id,
+                        __select: "_diag",
+                    }, (err, _order) => {
+                        if (err) {
+                            err.result = charge;
+                            LogSave('syncTransactions - associatedOrder -  order get diag - error', err);
+                        }else{
+                            transactions[tx]._user = _order._diag;
+                        }
+                        _associateHell.next();
+                    });
+                    
+                }else{
+                    _associateHell.next();
+                }
+
+                
+            });
+        });
+        //-- removes temporal items and save them again.
+        function _save() {
+            console.log('syncTransactions - StripeTransaction - removeWhen');
+            ctrl('StripeTransaction').removeWhen({
+                _user: data._user
+            }, (err, r) => {
+                console.log('syncTransactions - StripeTransaction - ok?',!err);
+                if (err) return cb(err, false);
+                var hell = utils.cbHell(transactions.length, () => {
+                    console.log('syncTransactions - success');
+                    return cb(err, true);
+                });
+                transactions.forEach((transaction,tx) => {
+                    console.log('syncTransactions - StripeTransaction - saving',tx);
+                    ctrl('StripeTransaction').save(transaction, (err, r) => {
+                        if (err) {
+                            LogSave('syncTransactions - StripeTransaction:save', err);
+                        }
+                        hell.next();
+                    });
+                });
+            })
+        }
+        //
+    });
+}
+
+function LogSave(msg, data, type) {
+    ctrl('Log').save({
+        message: msg,
+        data: data || {},
+        type: type || 'error'
+    });
+}
 
 function balanceTransactions(data, cb) {
 
-    stripe.balance.listTransactions({}, function(err, transactions) {
-        cb(err, transactions);
-    });
+
 }
 
 function balance(data, cb) {
@@ -190,9 +305,9 @@ function payOrder(_order, cb) {
     //if (_order._client.clientType != 'landlord' && _order.landlordEmail) {
     //    payload.receipt_email = _order.landlordEmail;
     //}
-    
-    if(_order.info && _order.info.description){
-        payload.statement_descriptor = _order.info.description.substring(0,19)+'...';
+
+    if (_order.info && _order.info.description) {
+        payload.statement_descriptor = _order.info.description.substring(0, 19) + '...';
     }
 
     if (_order.stripeTokenEmail) {
@@ -232,6 +347,7 @@ function captureOrderCharge(charge, cb) {
 
 //exports.stripe = stripe;
 module.exports = {
+    syncTransactions: syncTransactions,
     stripe: stripe,
     listDiagCharges: listDiagCharges,
     diagBalance: diagBalance,

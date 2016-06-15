@@ -1,7 +1,21 @@
 var fs = require("fs"),
     json;
-
+var urlencode = require('urlencode2');
+var urldecode = require('urldecode');
 var moment = require('moment');
+
+
+
+exports.has = (data,props)=>{
+    for(var x in props){
+        if(typeof data[props[x]]==='undefined') return false;
+        if(data[props[x]]==undefined) return false;
+    }
+    return true;
+};
+
+exports.encodeURIComponent = urlencode;
+exports.decodeURIComponent = urldecode;
 
 exports.formatTime = (d)=>{
     return moment(d).format('HH:mm');
@@ -22,11 +36,14 @@ function replaceAll(word,search, replacement) {
     return word.replace(new RegExp(search, 'g'), replacement);
 };
 
+exports.replaceAll = replaceAll;
+
 function cbHell(quantity, cb) {
     return {
         call: () => cb(),
         next: () => {
             quantity--;
+            console.log('backstuff-utils-cbHell: '+quantity+' threads left.');
             if (quantity === 0) cb();
         }
     }

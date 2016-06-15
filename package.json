@@ -15,7 +15,6 @@
   "name": "backstuff",
   "version": "1.2.8",
   "description": "web-dev-tool for restfull apis  nodejs/express/mongodb",
-  "author": "arancibiajav@gmail.com",
   "dependencies": {
     "atob": "^2.0.3",
     "body-parser": "^1.14.2",
@@ -36,12 +35,14 @@
     "mime-types": "^2.1.11",
     "mocha": "^2.4.5",
     "moment": "^2.11.2",
+    "moment-timezone": "^0.5.4",
     "mongoose": "^4.4.2",
     "mongoose-paginate": "^5.0.0",
     "password-maker": "^1.1.2",
     "request": "^2.69.0",
     "string": "^3.3.1",
     "stripe": "^4.4.0",
-    "urldecode": "^1.0.1"
+    "urldecode": "^1.0.1",
+    "urlencode2": "^1.0.1"
   }
 }

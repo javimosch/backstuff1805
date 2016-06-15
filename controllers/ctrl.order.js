@@ -6,13 +6,13 @@ var generatePassword = require("password-maker");
 var validate = require('../model/validator').validate;
 var handleMissingKeys = require('../model/validator').handleMissingKeys;
 //var ClientActions = require('./handlers.client').actions;
-
+var ctrl = require('../model/db.controller').create;
 var Order = mongoose.model('Order');
 var Log = require('../model/db.actions').create('Log');
 var User = require('../model/db.actions').create('User');
 var actions = require('../model/db.actions').create('Order');
 var UserAction = require('./ctrl.user');
-
+var utils = require('../model/utils');
 //var PaymentAction = require('./handlers/payment').actions;
 var payment = require('./ctrl.payment');
 var stripe = payment.stripe;
@@ -26,10 +26,11 @@ var saveKeys = ['_client', '_diag', 'start', 'end', 'diags'
 ];
 
 
-function LogSave(msg, type) {
+function LogSave(msg, type, data) {
     Log.save({
         message: msg,
-        type: type || 'error'
+        type: type || 'error',
+        data: data || {}
     });
 }
 
@@ -184,7 +185,7 @@ function syncStripe(data, cb) {
         if (cb) {
             cb(null, {
                 ok: true,
-                message: "Sync in progress, see server console for more details.",
+                message: "appc in progress, see server console for more details.",
                 result: null
             });
         }
@@ -395,21 +396,37 @@ function save(data, cb) {
 
 
                 if (prevStatus !== 'prepaid' && _order.status === 'prepaid') {
-                    //CLIENT_ORDER_PAYMENT_SUCCESS //CLIENT//#3
+
                     UserAction.get({
                         _id: _order._client._id || _order._client
                     }, (_err, _client) => {
-                        Notif.trigger(NOTIFICATION.CLIENT_ORDER_PAYMENT_SUCCESS, {
-                            _user: _client,
-                            _order: _order
+
+                        getInvoiceHTML(_order, (_err, html) => {
+                            if (_err) {
+                                LogSave('Unable to retrieve order invoice html', 'warning', _err);
+                            }
+
+                            if (_order.notifications && _order.notifications.LANDLORD_ORDER_PAYMENT_DELEGATED) {
+                                //LANDLORD_ORDER_PAYMENT_SUCCESS //LANDLORD//#2
+                                if (_order.landLordEmail) {
+                                    Notif.trigger(NOTIFICATION.LANDLORD_ORDER_PAYMENT_SUCCESS, {
+                                        _user: _client,
+                                        _order: _order,
+                                        attachmentPDFHTML: html
+                                    });
+                                }
+                            }
+                            else {
+                                //CLIENT_ORDER_PAYMENT_SUCCESS //CLIENT//#3
+                                Notif.trigger(NOTIFICATION.CLIENT_ORDER_PAYMENT_SUCCESS, {
+                                    _user: _client,
+                                    _order: _order,
+                                    attachmentPDFHTML: html
+                                });
+                            }
+
                         });
-                        //LANDLORD_ORDER_PAYMENT_SUCCESS //LANDLORD//#2
-                        if (_order.landLordEmail) {
-                            Notif.trigger(NOTIFICATION.LANDLORD_ORDER_PAYMENT_SUCCESS, {
-                                _user: _client,
-                                _order: _order
-                            });
-                        }
+
                     });
                 }
 
@@ -421,6 +438,61 @@ function save(data, cb) {
         }, {}, saveKeys);
     }
 }
+
+function getInvoiceHTML(_order, cb) {
+    var Category = ctrl('Category');
+    var Text = ctrl('Text');
+    Category.createUpdate({
+        code: "DIAGS_SETTINGS",
+        __match: ['code']
+    }, (err, _category) => {
+        if (err) return cb(err);
+
+        Text.get({
+            code: 'INVOICE',
+        }, (err, _text) => {
+            if (err) return cb(err);
+
+            var html =
+                utils.encodeURIComponent(
+                    invoiceHTMLInyectOrderDetails(utils.decodeURIComponent(_text.content), _.cloneDeep(_order)));
+            return cb(null, html);
+        });
+    });
+}
+
+function invoiceHTMLInyectOrderDetails(html, _order) {
+    _order['ORDER_DESCRIPTION'] = _order.info.description;
+    _order['CLIENT_FULLNAME'] = _order._client.firstName + ' ' + (_order._client.lastName || '');
+    _order['CLIENT_FIRSTNAME'] = _order._client.firstName;
+    _order['CLIENT_LASTNAME'] = _order._client.lastName || '';
+    _order['CLIENT_EMAIL'] = _order._client.email;
+    _order['CLIENT_ADDRESS'] = _order._client.address;
+    _order.createdAt = moment(_order.createdAt).format('DD-MM-YY HH[h]mm');
+    //
+    var backofficeURL = process.env.adminURL || ''; //blooming-refuge-27843.herokuapp.com/admin#
+    if (backofficeURL) {
+        backofficeURL = backofficeURL.substring(0, backofficeURL.lastIndexOf('/'));
+        LogSave('Invoice Logo Injected Log','info',{
+            src: backofficeURL + '/img/logo.jpg'
+        });
+        _order["LOGO"] = "<img src='" + backofficeURL + '/img/logo.jpg' + "'>";
+    }
+    else {
+        LogSave('Unable to inject LOGO in invoice. Enviromental variable adminURL required.', 'warning', _order);
+        _order["LOGO"] = "";
+    }
+    //
+    return invoiceHTMLReplaceVariable(html, _order);
+}
+
+function invoiceHTMLReplaceVariable(html, obj) {
+    for (var x in obj) {
+        html = utils.replaceAll(html,"{{" + x.toUpperCase() + "}}", obj[x]);
+    }
+    return html;
+}
+
 
 function everyAdmin(cb) {
     UserAction.getAll({
@@ -440,7 +512,7 @@ function orderPopulate(data, cb) {
             _diag: "email firstName lastName password"
         }
     }, (_err, _order) => cb(_order));
-}
+};
 
 function orderDiag(_order, cb) {
     UserAction.get({
@@ -581,6 +653,7 @@ module.exports = {
     pay: pay,
     syncStripe: syncStripe,
     confirm: confirm,
+    populate: orderPopulate,
     //heredado
     existsById: actions.existsById,
     existsByField: actions.existsByField,

@@ -31,7 +31,7 @@ function associatedOrder(data, cb) {
         _charge(data.source);
     }
     else {
-          cb(null, null); //not a charge (refund)
+        cb(null, null); //not a charge (refund)
         /*
         stripe.refunds.retrieve(
             data.source,
@@ -58,14 +58,14 @@ function associatedOrder(data, cb) {
             id,
             function(err, charge) {
                 if (err) return cb(err);
-                if(!charge) return cb(null,null);
+                if (!charge) return cb(null, null);
                 actions.log('associatedOrder=chage=metadata=' + JSON.stringify(charge.metadata));
                 var _id = charge.metadata._order;
                 var _orderDescription = charge.metadata._orderDescription;
                 var _orderURL = charge.metadata._orderURL;
                 //Order.get({ _id: _id }, (err, _order) => {
                 cb(null, {
-                    charge:charge,
+                    charge: charge,
                     metadata: charge.metadata,
                     _order: {
                         description: _orderDescription,
@@ -98,8 +98,10 @@ function syncTransactions(data, cb) {
         });
         //-- set _order field in each transaction
         var _associateHell = utils.cbHell(transactions.length, () => {
-            toRemove.forEach(index=>{
-                transactions.splice(index,1);
+            console.log('bs debug transactions length',transactions.length);
+            console.log('bs debug transactions to remove length',toRemove.length);
+            toRemove.forEach(index => {
+                transactions.splice(index, 1);
             })
             console.log('syncTransactions - _associateHell - end');
             _save();
@@ -114,39 +116,50 @@ function syncTransactions(data, cb) {
                     err.result = charge;
                     LogSave('syncTransactions - associatedOrder - fn  error', err);
                 }
-                if(!charge){
+                if (!charge) {
                     toRemove.push(tx);
                     console.log('syncTransactions - associatedOrder - no-charge - skip', transactions[tx]._order);
                     return _associateHell.next();
                 }
-                
-                if(!charge._order || !charge._order._id){
-                   LogSave('stripe charge without metadata', charge); 
+
+                if (!charge._order || !charge._order._id) {
+                    toRemove.push(tx);
+                    LogSave('stripe charge without metadata', charge);
                 }
-                
+
                 transactions[tx]._order = charge._order._id;
                 console.log('syncTransactions - associatedOrder - order get - ', transactions[tx]._order);
+                var _order_id = charge._order && charge._order._id || charge._order;
+                if (data._diag && _order_id) {
 
-                if (data._diag && charge._order && charge._order._id) {
-                    
                     ctrl('Order').get({
-                        _id: charge._order._id,
+                        _id: _order_id,
                         __select: "_diag",
                     }, (err, _order) => {
                         if (err) {
                             err.result = charge;
                             LogSave('syncTransactions - associatedOrder -  order get diag - error', err);
-                        }else{
-                            transactions[tx]._user = _order._diag;
+                        }
+                        else {
+                            if (_order) {
+                                transactions[tx]._user = _order && _order._diag || null;
+                            }
+                            else {
+                                console.log('bs debug transaction remove because no order',charge._order._id);
+                                toRemove.push(tx); //Associated order do not exists
+                            }
+
                         }
                         _associateHell.next();
                     });
-                    
-                }else{
+
+                }
+                else {
+                    toRemove.push(tx);
                     _associateHell.next();
                 }
 
-                
+
             });
         });
         //-- removes temporal items and save them again.
@@ -155,14 +168,14 @@ function syncTransactions(data, cb) {
             ctrl('StripeTransaction').removeWhen({
                 _user: data._user
             }, (err, r) => {
-                console.log('syncTransactions - StripeTransaction - ok?',!err);
+                console.log('syncTransactions - StripeTransaction - ok?', !err);
                 if (err) return cb(err, false);
                 var hell = utils.cbHell(transactions.length, () => {
                     console.log('syncTransactions - success');
                     return cb(err, true);
                 });
-                transactions.forEach((transaction,tx) => {
-                    console.log('syncTransactions - StripeTransaction - saving',tx);
+                transactions.forEach((transaction, tx) => {
+                    console.log('syncTransactions - StripeTransaction - saving', tx);
                     ctrl('StripeTransaction').save(transaction, (err, r) => {
                         if (err) {
                             LogSave('syncTransactions - StripeTransaction:save', err);

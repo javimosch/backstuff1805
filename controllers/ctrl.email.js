@@ -556,7 +556,7 @@ function DIAGS_CUSTOM_EMAIL(data, cb, _subject, templateName, _to, _type) {
             '$LANDLORD_PHONE': _order.landLordPhone,
             '$ORDER_DIAG_LIST': htmlOrderSelectedDiagsList(_order),
             '$ORDER_ADDRESS': _order.address,
-            '$ORDER_KEYS_INFO': _order.keysAddress + ' / ' + dateTime2(_order.keysTimeFrom) + ' - ' + time(_order.keysTimeFrom),
+            '$ORDER_KEYS_INFO': _order.keysAddress + ' / ' + dateTime2(_order.keysTimeFrom) + ' - ' + time(_order.keysTimeTo),
 
             '$ORDER_OBSERVATION': _order.obs,
             '$OBS_DISPLAY': (_order.obs) ? 'block' : 'none',

@@ -113,7 +113,11 @@ function view(data, cb, req, res) {
             ctrl('Log').save({
                 message: 'Order Invoice PDF Generation Error',
                 type: 'error',
-                data:err
+                data:{
+                    name: 'ctrl.pdf.generate',
+                    err:err,
+                    payload:data
+                }
             });
         }
         

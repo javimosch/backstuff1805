@@ -115,7 +115,7 @@ function view(data, cb, req, res) {
                 data:err
             });
         }
-        if (err && !r.ok) return cb(err, r);
+        
         function next() {
             var data = btoa(JSON.stringify({
                 fileName: r.fileName
@@ -123,6 +123,10 @@ function view(data, cb, req, res) {
             var url = req.protocol + '://' + req.get('host') + '/ctrl/Pdf/stream/' + data;
             return cb(null, url);
         }
+        
+        if (err && (!r || !r.ok)) return cb(err, r);
+        return next();
+        
     });
 }
 

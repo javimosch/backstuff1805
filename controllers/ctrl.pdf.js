@@ -68,7 +68,7 @@ function stream(data, cb, req, res) {
     var path = process.cwd() + '/www/temp/' + data.fileName;
 
     if (!fs.existsSync(path)) {
-        return res.send("Invalid file path or file deleted: " + data.fileName);
+        return res.send("Invalid file path or file deleted: "+data.fileName);
     }
 
     log('stream:path:' + path);
@@ -108,6 +108,7 @@ function stream(data, cb, req, res) {
 
 function view(data, cb, req, res) {
     generate(data, (err, r) => {
+
         if (err) {
             ctrl('Log').save({
                 message: 'Order Invoice PDF Generation Error',

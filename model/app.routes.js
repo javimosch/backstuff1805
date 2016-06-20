@@ -25,8 +25,11 @@ exports.configure = function(app) {
         var data = req.params.data;
         var actions = dbController.create(controller);
         if (!actions[action]) {
+            var msg = '<p>Invalid controller ' + controller + " action " + action + '</p>';
+            console.log(msg);
+            console.log('Available for',controller,JSON.stringify(Object.keys(actions)));
             res.set('Content-Type', 'text/html');
-            res.send(new Buffer('<p>Invalid controller' + controller + " action " + action + '</p>'));
+            res.send(new Buffer(msg));
         }
         else {
             return actions[action](data, actions.result(res), req, res);

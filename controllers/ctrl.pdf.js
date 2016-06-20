@@ -126,6 +126,16 @@ function view(data, cb, req, res) {
                 fileName: r.fileName
             }));
             var url = req.protocol + '://' + req.get('host') + '/ctrl/Pdf/stream/' + data;
+            
+             ctrl('Log').save({
+                message: 'Order Invoice PDF Generation Url Debug',
+                type: 'info',
+                data:{
+                    host: req.get('host'),
+                    url:req.protocol + '://' + req.get('host') + '/ctrl/Pdf/stream/' + data
+                }
+            });
+            
             return cb(null, url);
         }
         

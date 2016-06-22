@@ -17,9 +17,13 @@ function register(name, path) {
 }
 
 function create(name) {
-    if (EXPORT['$' + name]) return EXPORT['$' + name];
+    //if (EXPORT['$' + name]) return EXPORT['$' + name];
     //
-    var specialActions = actions[name] || {};
+    //var specialActions = actions[name] || {};
+    
+    var path = path || 'controllers/ctrl.' + name.toLowerCase();
+    var specialActions = require(process.cwd() + '/' + path);
+    
     //console.log('db.controller '+ name + ' special actions are '+JSON.stringify(Object.keys(specialActions)));
     return Object.assign(createDbActions(name), specialActions);
 }

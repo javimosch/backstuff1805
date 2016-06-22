@@ -452,7 +452,9 @@ function getInvoiceHTML(_order, cb) {
             code: 'INVOICE',
         }, (err, _text) => {
             if (err) return cb(err);
-
+            if(!_text){
+                return cb(null,'CONFIGURE ORDER INVOICE TEMPLATE');
+            }
             var html =
                 utils.encodeURIComponent(
                     invoiceHTMLInyectOrderDetails(utils.decodeURIComponent(_text.content), _.cloneDeep(_order)));

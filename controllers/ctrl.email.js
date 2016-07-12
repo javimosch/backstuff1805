@@ -39,6 +39,7 @@ var EXPORT_ACTIONS = {
     GAB_USER_NEW_ACCOUNT: GAB_USER_NEW_ACCOUNT,
     GAB_ADMIN_USER_NEW_ACCOUNT: GAB_ADMIN_USER_NEW_ACCOUNT,
     GAB_ADMIN_CONTACT_FORM: GAB_ADMIN_CONTACT_FORM,
+    GAB_USER_BIKER_FEATURE_REQUEST: GAB_USER_BIKER_FEATURE_REQUEST,
 
     BA_ADMIN_CONTACT_FORM: BA_ADMIN_CONTACT_FORM,
 
@@ -335,6 +336,37 @@ function GAB_ADMIN_CONTACT_FORM(data, cb) {
     }
 }
 
+function GAB_USER_BIKER_FEATURE_REQUEST(data, cb) {
+    cb(null, "working, thanks.");
+
+    everyUserWithRole((_admin) => {
+        var payload = _.cloneDeep(data);
+        payload._admin = _admin;
+        next(payload);
+    });
+
+    function next(payload) {
+        GAB_CUSTOM({
+            name: 'GAB_ADMIN_BIKER_FEATURE_REQUEST',
+            subject: "GAC - Coursier Account Requested",
+            data: payload,
+            to: payload._admin && payload._admin.email
+        }, (err, res) => {
+            if (err) return dblog('GAB_ADMIN_BIKER_FEATURE_REQUEST Error', err);
+        });
+    }
+
+    GAB_CUSTOM({
+        name: 'GAB_USER_BIKER_FEATURE_REQUEST',
+        subject: "GAC - Coursier Account Requested",
+        data: data,
+        to: data._user.email && data._user.email
+    }, (err, res) => {
+        if (err) return dblog('GAB_USER_BIKER_FEATURE_REQUEST Error', err);
+    });
+
+}
+
 function GAB_CUSTOM(opt, cb) {
     var data = opt.data;
     var name = opt.name;
@@ -342,13 +374,14 @@ function GAB_CUSTOM(opt, cb) {
     actions.log(name + '=START');
     var _user = data._user,
         _admin = data._admin;
-    moment.locale('en')
+    moment.locale(process.env.momentLocale||'en');
     var replaceData = {};
     if (_user) {
         replaceData = Object.assign(replaceData, {
             '$USER_DASH_URL': adminUrl('login?email=' + _user.email + '&k=' + btoa(_user.pwd || 'dummy')),
             '$USER_PWD': _user.pwd || '[Contact support for a new password]',
             '$USER_FULLNAME': _user.fullName || _user.email,
+            '$ADMIN_NICKNAME': _user && _user.nickName || _user.fullName || _user.email,
             '$USER_EMAIL': _user.email
         });
     }

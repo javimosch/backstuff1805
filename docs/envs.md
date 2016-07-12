@@ -13,5 +13,7 @@ companyName='Diagnostical'
 emailFrom=diagnostical@startup.com
 PORT=8081
 
+momentLocale=en
+emailFrom="webmaster-no-reply@getacoursier.com"
 
 mongo ds019624.mlab.com:19624/gab -u root -p root

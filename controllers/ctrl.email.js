@@ -34,7 +34,12 @@ function everyAdmin(cb) {
 }
 
 var EXPORT_ACTIONS = {
-    BA_ADMIN_CONTACT_FORM:BA_ADMIN_CONTACT_FORM,
+
+    GAB_USER_PASSWORD_RESET: GAB_USER_PASSWORD_RESET,
+    GAB_USER_NEW_ACCOUNT: GAB_USER_NEW_ACCOUNT,
+    GAB_ADMIN_USER_NEW_ACCOUNT: GAB_ADMIN_USER_NEW_ACCOUNT,
+
+    BA_ADMIN_CONTACT_FORM: BA_ADMIN_CONTACT_FORM,
 
     ADMIN_ADMIN_ACCOUNT_CREATED: ADMIN_ADMIN_ACCOUNT_CREATED,
     ADMIN_CLIENT_ACCOUNT_CREATED: ADMIN_CLIENT_ACCOUNT_CREATED,
@@ -142,42 +147,28 @@ function send(opt, resCb) {
                 if (err) {
                     return dblog('notification getById fail in function send');
                 }
-                if (!_.includes(_notification._config.disabledTypes, _notification.type)) {
 
-                    if (process.env.disableMailing === '1') {
-                        actions.log('send:mailing-disabled');
-                        _notification.sended = true;
-                        _notification.sendedDate = Date.now();
-                        Notification.update(_notification, (err, _notification) => {
-                            if (err) dblog('notification sended update fail in function send.');
+                if (process.env.disableMailing === '1') {
+                    actions.log('send:mailing-disabled');
+                    _notification.sended = true;
+                    _notification.sendedDate = Date.now();
+                    Notification.update(_notification, (err, _notification) => {
+                        if (err) dblog('notification sended update fail in function send.');
 
-                            if (resCb) resCb(null, {
-                                message: 'Success (Mailing disabled)',
-                                ok: true
-                            });
-
+                        if (resCb) resCb(null, {
+                            message: 'Success (Mailing disabled)',
+                            ok: true
                         });
-                        return dummySuccessResponse(opt.cb);
-                    }
-                    else {
-                        _send(_notification);
-                    }
 
-
+                    });
+                    return dummySuccessResponse(opt.cb);
                 }
                 else {
-
-                    if (opt.cb) {
-                        return opt.cb(null, {
-                            ok: true,
-                            message: 'Notification type disabled'
-                        })
-                    }
-
-                    if (resCb) {
-                        resCb('SENDING_DISABLED_TYPE', "");
-                    }
+                    _send(_notification);
                 }
+
+
+
             });
         }
 
@@ -255,13 +246,72 @@ function generateInvoiceAttachmentIfNecessary(data, t, cb) {
     }
 }
 
-function BA_ADMIN_CONTACT_FORM(data,cb){
+
+
+function GAB_ADMIN_USER_NEW_ACCOUNT(data, cb) {
+    GAB_CUSTOM({
+        name: 'GAB_ADMIN_USER_NEW_ACCOUNT',
+        subject: "GAB - New User Account",
+        data: data,
+        to: data._admin && data._admin.email
+    },cb);
+}
+
+function GAB_USER_NEW_ACCOUNT(data, cb) {
+    GAB_CUSTOM({
+        name: 'GAB_USER_NEW_ACCOUNT',
+        subject: "GAB - New Account",
+        data: data,
+        to: data._user && data._user.email
+    },cb);
+}
+
+function GAB_USER_PASSWORD_RESET(data, cb) {
+    GAB_CUSTOM({
+        name: 'GAB_USER_PASSWORD_RESET',
+        subject: "GAB - Account New Password",
+        data: data,
+        to: data._user && data._user.email
+    },cb);
+}
+
+function GAB_CUSTOM(opt, cb) {
+    var data = opt.data;
+    var name = opt.name;
+    var to = opt.to || data.to || data.email;
+    actions.log(name + '=START');
+    var _user = data._user,
+        _admin = data._admin;
+    moment.locale('en')
+    var replaceData = {
+        '$USER_PWD': _user.pwd || '[Contact support for a new password]',
+        '$USER_FULLNAME': _user.fullName || _user.email,
+        '$USER_EMAIL': _user.email,
+        '$DASH_URL': adminUrl('login?email=' + _user.email + '&k=' + btoa(_user.pwd || 'dummy')),
+        '$ADMIN_PWD': _admin && _admin.pwd,
+        '$ADMIN_FULLNAME': _admin && _admin.fullName,
+        '$ADMIN_EMAIL': _admin && _admin.email,
+    };
+    send({
+        attachment: data.attachment || null,
+        __notificationType: name,
+        _user: _user,
+        to: to,
+        subject: opt.subject,
+        templateName: name,
+        templateReplace: replaceData,
+        cb: cb
+    });
+}
+
+
+function BA_ADMIN_CONTACT_FORM(data, cb) {
     actions.log('BA_ADMIN_CONTACT_FORM=START');
     moment.locale('es')
     var replaceData = {
-        '$MESSAGE': data.message||'Ninguno',
-        '$EMAIL':data.email||'Desconocido',
-        '$MOTIVE':data.motive||'Desconocido',
+        '$MESSAGE': data.message || 'Ninguno',
+        '$EMAIL': data.email || 'Desconocido',
+        '$MOTIVE': data.motive || 'Desconocido',
         //'$BACKOFFICE_URL': adminUrl('login?email=' + _user.email + '&k=' + btoa(_user.password||'dummy'))
     };
     send({

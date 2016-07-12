@@ -53,9 +53,9 @@ configureGridFS(mongoose);
 var models = {};
 var schemas = {};
 
-exports.getModel  = (n) => models[n];
+exports.getModel = (n) => models[n];
 exports.getSchema = (n) => schemas[n];
-exports.mongoose  = mongoose;
+exports.mongoose = mongoose;
 
 function model(n, def) {
     if (!def) console.log('WARN:' + n + ' def required');
@@ -86,24 +86,26 @@ function model(n, def) {
     schemas[n] = schema;
 }
 
-model('Stats', {});
-model('File', {});
-model('Email', {});
-model('Stripe', {});
-model('Settings', require('../schemas/schema.diags-settings').def);
-model('Payment', require('../schemas/schema.diags-payment').def);
-model('Pdf', require('../schemas/schema.pdf').def);
-model('Category', require('../schemas/schema.category').def);
-model('Text', require('../schemas/schema.text').def);
-model('Notification', require('../schemas/schema.notification').def);
-model('Log', require('../schemas/schema.log').def);
-model('UserNotifications', require('../schemas/schema.user-notifications').def);
-model('StripeTransaction', require('../schemas/schema.diags-stripe-transaction').def);
-model('Balance', require('../schemas/schema.balance').def);
-model('BalanceItem', require('../schemas/schema.balance-item').def);
-model('TimeRange', require('../schemas/schema.time-range').def);
-model('User', require('../schemas/schema.diags-user').def);
-model('Order', require('../schemas/schema.diags-order').def);
+var create = model;
+create('Payment', require('../schemas/schema.diags-payment').def);
+create('Role', require('../schemas/schema.role').def);
+create('Push', require('../schemas/schema.push').def);
+create('Device', require('../schemas/schema.device').def);
+create('Pdf', require('../schemas/schema.pdf').def);
+create('Category', require('../schemas/schema.category').def);
+create('Text', require('../schemas/schema.text').def);
+create('Notification', require('../schemas/schema.notification').def);
+create('Email', {});
+create('Log', require('../schemas/schema.log').def);
+create('Stripe', {});
+create('Settings', require('../schemas/schema.diags-settings').def);
 
+try {
+    require('../config/config.' + process.env.APPNAME.toString().toLowerCase()).models(create);
+}
+catch (e) {
+    console.log('ERROR', 'Loading config models fail for project', process.env.APPNAME);
+    console.log(JSON.stringify(e));
+}
 
 configureGridFSActions();

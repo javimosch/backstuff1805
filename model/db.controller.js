@@ -1,34 +1,27 @@
-var createDbActions = require('./db.actions').create;
-var actions = {};
-
-function register(name, path) {
-    path = path || 'controllers/ctrl.' + name.toLowerCase();
-    actions[name] = require(process.cwd() + '/' + path);
-    console.log('db.controller ' + name + " register " + Object.keys(actions[name]).length + " actions.");
-    //console.log('db.controller '+name+' register the following actions '+JSON.stringify(Object.keys(actions[name])));
-    var obj = create(name);
-    EXPORT['$' + name] = obj;
-
-    if (obj._configure && !obj._configuredFlag) {
-        obj._configuredFlag = true
-        console.log(name.toUpperCase() + ": Configure");
-        obj._configure(obj._hook);
-    }
-}
-
+var pathName = {};
 function create(name) {
-    //if (EXPORT['$' + name]) return EXPORT['$' + name];
-    //
-    //var specialActions = actions[name] || {};
-    
-    var path = path || 'controllers/ctrl.' + name.toLowerCase();
+    //DB ACTIONS
+    var actions = require('./db.actions').create(name)
+    if (actions._configure && !actions._configuredFlag) {
+        actions._configuredFlag = true
+        console.log(name.toUpperCase() + ": Configure");
+        actions._configure(actions._hook);
+    }
+    //CUSTOM ACTIONS
+    var ctrlName = name.toLowerCase();
+    if(pathName[name]){
+        ctrlName = pathName[name];
+        console.log('DB.CONTROLLER READING CUSTOM PATH',name,ctrlName);
+    }
+    var path = path || 'controllers/ctrl.' + ctrlName;
     var specialActions = require(process.cwd() + '/' + path);
-    
     //console.log('db.controller '+ name + ' special actions are '+JSON.stringify(Object.keys(specialActions)));
-    return Object.assign(createDbActions(name), specialActions);
+    return Object.assign(actions, specialActions);
 }
 var EXPORT = {
-    register: register,
+    path:(n,p)=>{
+        pathName[n]=p;  
+    },
     create: create
 };
 module.exports = EXPORT;

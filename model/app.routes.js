@@ -2,23 +2,24 @@ var mime = require('mime-types')
 var mongoose = require('./db').mongoose;
 var _ = require('lodash');
 var dbController = require('./db.controller');
-dbController.register('Category');
-dbController.register('Notification');
-dbController.register('Stripe');
-dbController.register('Text');
-dbController.register('User');
-dbController.register('Order');
-dbController.register('Payment');
-dbController.register('Stats');
-dbController.register('File');
-dbController.register('Email');
-dbController.register('Pdf');
-var NOTIFICATION = dbController.create("Notification").NOTIFICATION;
-var Log = dbController.create("Log");
-var File = dbController.create('File')
-    //
+
+//
 exports.configure = function(app) {
-    //
+
+    console.log('ROUTES configure');
+
+    try {
+        require('../config/config.' + process.env.APPNAME.toString().toLowerCase()).controllers(dbController);
+        console.log('ROUTES reading config',process.env.APPNAME);
+    }
+    catch (e) {
+        console.log('ERROR', 'Loading config controllers fail for project', process.env.APPNAME);
+    }
+
+    var NOTIFICATION = dbController.create("Notification").NOTIFICATION;
+    var Log = dbController.create("Log");
+    var File = dbController.create('File')
+        //
     app.get('/ctrl/:controller/:action/:data', function(req, res) {
         var controller = req.params.controller;
         var action = req.params.action;
@@ -27,7 +28,7 @@ exports.configure = function(app) {
         if (!actions[action]) {
             var msg = '<p>Invalid controller ' + controller + " action " + action + '</p>';
             console.log(msg);
-            console.log('Available for',controller,JSON.stringify(Object.keys(actions)));
+            console.log('Available for', controller, JSON.stringify(Object.keys(actions)));
             res.set('Content-Type', 'text/html');
             res.send(new Buffer(msg));
         }
@@ -76,9 +77,9 @@ exports.configure = function(app) {
         File.get({
             _id: req.params._id
         }, (_err, data) => {
-           
-           // res.setHeader('Content-disposition', 'attachment; filename=' + data.filename);
-           // res.setHeader('Content-Type', 'application/pdf');
+
+            // res.setHeader('Content-disposition', 'attachment; filename=' + data.filename);
+            // res.setHeader('Content-Type', 'application/pdf');
 
             res.setHeader("content-type", "application/pdf");
             res.setHeader('Content-disposition', ' filename=' + (data.filename || 'file') + '.pdf');

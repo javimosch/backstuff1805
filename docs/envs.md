@@ -12,3 +12,6 @@ disableMailing=0
 companyName='Diagnostical'
 emailFrom=diagnostical@startup.com
 PORT=8081
+
+
+mongo ds019624.mlab.com:19624/gab -u root -p root

@@ -16,9 +16,9 @@ var _hook = function(schemaName, n, cb, data, index) {
         console.log(schemaName, 'HOOK', n, 'added at', _hooks[n].length);
     }
     else {
-        
+
         if (data && index) {
-            
+
             var _cb = _hooks[n][index] || undefined;
             if (!_cb) {
                 console.log(schemaName, 'HOOK:RTA', JSON.stringify(data));
@@ -31,7 +31,7 @@ var _hook = function(schemaName, n, cb, data, index) {
             }
         }
         else {
-            
+
             var _data = cb;
             if (_hooks[n][0]) {
                 console.log(schemaName, 'HOOK', n, 'fire:index:', 0, '  total:', _hooks[n].length);
@@ -53,6 +53,16 @@ var _hook = function(schemaName, n, cb, data, index) {
 exports.create = function(modelName, m) {
     if (!mongoose) mongoose = m;
     var Model = getModel(modelName);
+
+
+    if (modelName !== 'File') {
+        try {
+            Model.findOne({}, () => {});
+        }
+        catch (e) {
+            console.log('DB SCHEMA ERROR', modelName);
+        }
+    }
 
     var schema = getSchema(modelName);
 
@@ -161,6 +171,7 @@ exports.create = function(modelName, m) {
                 log('createUpdate:matchData=' + JSON.stringify(matchData));
 
                 if (Object.keys(matchData).length > 0) {
+                    console.log('MODEL FROM ',modelName);
                     return Model.findOne(toRules(matchData)).exec((err, r) => {
                         if (err) return rta(err, null);
                         if (r) {
@@ -289,7 +300,7 @@ exports.create = function(modelName, m) {
 
     function remove(data, cb) {
         data = {
-            _id:data._id
+            _id: data._id
         };
         log('remove=' + JSON.stringify(data));
         check(data, ['_id'], (err, r) => {
@@ -471,7 +482,7 @@ exports.create = function(modelName, m) {
         });
     }
 
-    return {
+    var RTA = {
         schema: schema,
         model: Model,
         _hook: hook,
@@ -496,4 +507,5 @@ exports.create = function(modelName, m) {
         create: _create,
         log: log
     };
+    return RTA;
 };

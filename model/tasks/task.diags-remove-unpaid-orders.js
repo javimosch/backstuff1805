@@ -17,6 +17,11 @@ module.exports = {
     startupIntervalDelay: 1000,
 };
 
+var CANCEL_MOTIVES = {
+    WHEN_PASSED_WITHOUT_ASSIGNMENT: 'WHEN_PASSED_WITHOUT_ASSIGNMENT',
+    TIME_WITHOUT_ASSIGNATION_EXCEEDED: 'TIME_WITHOUT_ASSIGNATION_EXCEEDED'
+};
+
 function handler(data, cb) {
     //console.log('remove-unpaid-orders', 'start');
     //
@@ -28,14 +33,27 @@ function handler(data, cb) {
         if (err) return LogSave(name + " error", err);
         orders.forEach(_order => {
             console.log('bs debug task order id', _order._id);
-            if (Date.now() - new Date(_order.createdAt) > 1000 * 60 * 30) {
-                console.log('bs debug task order remove');
-                Order.remove(_order, (err) => {
-                    console.log('bs debug task order remove success', !err);
+            if (Date.now() - new Date(_order.updatedAt) > 1000 * 60 * 30 ) { //milli sec min
+                console.log('bs debug task order cancel');
+
+                _order.info = _order.info || {};
+                _order.status = 'canceled';
+                _order.info.cancelMotiveCode = CANCEL_MOTIVES.TIME_WITHOUT_ASSIGNATION_EXCEEDED;
+
+                Order.update(_order, (err) => {
+                    console.log('bs debug task order canceled success', !err);
                     if (err) return LogSave(name + " error", err);
 
-                    LogSave('Unpaid order removed.', _order, 'info');
+                    LogSave('Unassigned order canceled.', _order, 'info');
                 });
+
+                /*
+                 Order.remove(_order, (err) => {
+                     console.log('bs debug task order remove success', !err);
+                     if (err) return LogSave(name + " error", err);
+
+                     LogSave('Unpaid order removed.', _order, 'info');
+                 });*/
             }
         })
     });

@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "start": "heroku local web",
+    "start": "cp stratton.js node_modules/stratton; heroku local web",
     "test": "mocha",
     "push": "node version.js | npm run deploy",
     "deploy": "git push origin master",
@@ -38,8 +38,11 @@
     "moment-timezone": "^0.5.4",
     "mongoose": "^4.4.2",
     "mongoose-paginate": "^5.0.0",
+    "node-gcm": "^0.14.3",
+    "node-push-notify": "^0.2.2",
     "password-maker": "^1.1.2",
     "request": "^2.69.0",
+    "stratton": "^2.0.1",
     "string": "^3.3.1",
     "stripe": "^4.4.0",
     "urldecode": "^1.0.1",

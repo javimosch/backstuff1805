@@ -13,8 +13,25 @@ var formatTime = require('../model/utils').formatTime;
 var _ = require('lodash');
 
 var stripeSecretTokenDEV = "sk_test_P9NzNL96T3X3FEgwOVxw8ovm";
+
+var createStripe = require("stripe");
 var stripe = require("stripe")(process.env.stripeSecretToken || stripeSecretTokenDEV);
 
+function Stripe() {
+    var PROD = process.env.PROD && process.env.PROD.toString() == '1' || false;
+    if (PROD) {
+        if (!process.env.STSK) {
+            LogSave('Server parameter requires configuration: STSK');
+        }
+        return createStripe(process.env.STSK);
+    }
+    else {
+        if (!process.env.STTSK) {
+            LogSave('Server parameter requires configuration: STTSK');
+        }
+        return createStripe(process.env.STTSK);
+    }
+}
 
 var modelName = 'payment';
 var actions = {
@@ -33,7 +50,7 @@ function associatedOrder(data, cb) {
     else {
         cb(null, null); //not a charge (refund)
         /*
-        stripe.refunds.retrieve(
+        Stripe().refunds.retrieve(
             data.source,
             function(err, refund) {
                 if (err) return cb(err, null);
@@ -54,7 +71,7 @@ function associatedOrder(data, cb) {
     }
 
     function _charge(id) {
-        stripe.charges.retrieve(
+        Stripe().charges.retrieve(
             id,
             function(err, charge) {
                 if (err) return cb(err);
@@ -78,11 +95,48 @@ function associatedOrder(data, cb) {
     }
 }
 
+function getUserWithStripeCustomer(_userID, stripeToken, __cb) {
+    var User = ctrl('User');
+    var Payment = ctrl('Payment');
+    User.get({
+        _id: _userID
+    }, (err, _user) => {
+        if (err) return __cb(err, _user);
+        if (_user.stripeCustomer) {
+            Stripe().customers.retrieve(
+                _user.stripeCustomer,
+                function(_err, customer) {
+                    if (customer) {
+                        __cb && __cb(null, _user);
+                    }
+                    else {
+                        getUserWithStripeCustomer_createCustomer(_user, __cb);
+                    }
+                }
+            );
+        }
+        else {
+            _user.stripeToken = stripeToken;
+            getUserWithStripeCustomer_createCustomer(_user, __cb);
+        }
+    });
+
+    function getUserWithStripeCustomer_createCustomer(_user, _cb) {
+        _user.stripeToken = stripeToken; //needs token for customer creation
+        Payment.createCustomer(_user, (err, stripeCustomer) => {
+            if (err) return _cb(err);
+            _user.stripeCustomer = stripeCustomer.id;
+            _user.save();
+            _cb && _cb(null, _user);
+        });
+    }
+}
+
 function syncTransactions(data, cb) {
     actions.log('syncTransactions=' + JSON.stringify(data));
     if (!data._user) return cb('_user required');
     //
-    stripe.balance.listTransactions({}, function(err, transactions) {
+    Stripe().balance.listTransactions({}, function(err, transactions) {
         if (err) return cb(err, false);
         //retreive transactions from stripe and customize fields.
         transactions = transactions.data.map(item => {
@@ -98,8 +152,8 @@ function syncTransactions(data, cb) {
         });
         //-- set _order field in each transaction
         var _associateHell = utils.cbHell(transactions.length, () => {
-            console.log('bs debug transactions length',transactions.length);
-            console.log('bs debug transactions to remove length',toRemove.length);
+            console.log('bs debug transactions length', transactions.length);
+            console.log('bs debug transactions to remove length', toRemove.length);
             toRemove.forEach(index => {
                 transactions.splice(index, 1);
             })
@@ -145,7 +199,7 @@ function syncTransactions(data, cb) {
                                 transactions[tx]._user = _order && _order._diag || null;
                             }
                             else {
-                                console.log('bs debug transaction remove because no order',charge._order._id);
+                                console.log('bs debug transaction remove because no order', charge._order._id);
                                 toRemove.push(tx); //Associated order do not exists
                             }
 
@@ -203,14 +257,14 @@ function balanceTransactions(data, cb) {
 }
 
 function balance(data, cb) {
-    stripe.balance.retrieve(function(err, balance) {
+    Stripe().balance.retrieve(function(err, balance) {
         cb(err, balance);
     });
 }
 
 function listDiagCharges(data, cb) {
     actions.log('listDiagCharges=' + JSON.stringify(data));
-    stripe.charges.list((err, charges) => {
+    Stripe().charges.list((err, charges) => {
         if (err) return cb(err, null);
         cb(null, charges.data.filter((charge) => {
             return charge.metadata._orderDiag == data._diag;
@@ -247,7 +301,7 @@ function diagBalance(data, cb) {
 function listCharges(data, cb) {
     actions.log('listCharges=' + JSON.stringify(data));
     //if (!data.stripeCustomer) return cb("listCustomerCharges: stripeCustomer required.", null);
-    stripe.charges.list((err, charges) => {
+    Stripe().charges.list((err, charges) => {
         if (err) return cb(err, null);
         cb(null, charges);
     });
@@ -269,7 +323,7 @@ function listUncaptured(data, cb) {
 function listCustomerCharges(data, cb) {
     actions.log('listCustomerCharges=' + JSON.stringify(data));
     if (!data.stripeCustomer) return cb("listCustomerCharges: stripeCustomer required.", null);
-    stripe.charges.list({
+    Stripe().charges.list({
         customer: data.stripeCustomer
     }, (err, charges) => {
         if (err) return cb(err, null);
@@ -280,7 +334,7 @@ function listCustomerCharges(data, cb) {
 function createCustomer(_user, cb) {
     actions.log('createCustomer=' + JSON.stringify(_user));
 
-    stripe.customers.create({
+    Stripe().customers.create({
         email: _user.email,
         metadata: {
             diagUserId: _user._id.toString()
@@ -294,6 +348,41 @@ function createCustomer(_user, cb) {
     });
 }
 
+
+function payUsingStripeCustomer(data, cb) {
+    var _order = data._order;
+    var _user = data._user;
+    console.log('ORDER', 'payUsingStripeCustomer:START', _user.stripeCustomer, _user.stripeToken);
+    _order.stripeCustomer = _user.stripeCustomer;
+    _order.stripeToken = _user.stripeToken;
+    //stripeCustomer
+    var Log = ctrl('Log');
+    payOrder(_order, (err, _charge) => {
+        if (err) return cb(err);
+        Order.get({
+            _id: _order._id
+        }, (_err, _order) => {
+            _order.isPaid = true;
+            _order.paidAt = Date.now();
+            Order.save(_order, _success);
+        });
+
+        function _success() {
+            console.log('ORDER', 'payUsingStripeCustomer:SUCCESS');
+            Log.save({
+                message: 'Order payment success',
+                type: 'info',
+                data: _charge
+            });
+            cb(null, {
+                ok: true,
+                message: "Pay successs",
+                result: true
+            });
+        }
+    });
+}
+
 function payOrder(_order, cb) {
     actions.log('payOrder:start');
 
@@ -301,17 +390,18 @@ function payOrder(_order, cb) {
     if (!_order.stripeCustomer) return cb("payOrder: stripeCustomer required.", null);
 
     var payload = {
-        amount: _order.price * 100, // amount in cents, again
+        amount: _order.amount || (_order.price * 100), // amount in cents, again
         currency: "eur",
         //source: _order.stripeToken,
         description: "Order payment",
         customer: _order.stripeCustomer,
         metadata: {
+            APPNAME: process.env.APPNAME,
             _order: _order._id,
-            _orderDiag: _order._diag._id || _order._diag,
-            _orderClient: _order._client._id && _order._client._id.toHexString() || _order._client,
-            _orderDescription: _order.address + ' (' + formatTime(_order.diagStart) + ' - ' + formatTime(_order.diagEnd) + ')',
-            _orderURL: adminUrl('/orders/edit/' + _order._id)
+            //_orderDiag: _order._diag._id || _order._diag,
+            //_orderClient: _order._client._id && _order._client._id.toHexString() || _order._client,
+            //_orderDescription: _order.address + ' (' + formatTime(_order.diagStart) + ' - ' + formatTime(_order.diagEnd) + ')',
+            //_orderURL: adminUrl('/orders/edit/' + _order._id)
         }
     };
 
@@ -329,7 +419,7 @@ function payOrder(_order, cb) {
 
     actions.log('payOrder:payload' + JSON.stringify(payload));
 
-    stripe.charges.create(payload, (err, _charge) => {
+    Stripe().charges.create(payload, (err, _charge) => {
         if (err) { // && err.type === 'StripeCardError'
             // The card has been declined
             cb(err, null);
@@ -346,7 +436,7 @@ function payOrder(_order, cb) {
 
 function captureOrderCharge(charge, cb) {
     actions.log('captureOrderCharge:start=' + JSON.stringify(charge));
-    stripe.charges.capture({
+    Stripe().charges.capture({
         charge: charge.id,
         statement_descriptor: (process.env.companyName || 'Diags S.A') + ' - Custom inspection.'
     }, function(err, charge) {
@@ -360,6 +450,8 @@ function captureOrderCharge(charge, cb) {
 
 //exports.stripe = stripe;
 module.exports = {
+    payUsingStripeCustomer: payUsingStripeCustomer,
+    getUserWithStripeCustomer: getUserWithStripeCustomer,
     syncTransactions: syncTransactions,
     stripe: stripe,
     listDiagCharges: listDiagCharges,

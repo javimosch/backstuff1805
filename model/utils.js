@@ -3,7 +3,7 @@ var fs = require("fs"),
 var urlencode = require('urlencode2');
 var urldecode = require('urldecode');
 var moment = require('moment');
-
+var ctrl = require('./db.controller').create;
 
 
 exports.has = (data,props)=>{
@@ -20,6 +20,15 @@ exports.decodeURIComponent = urldecode;
 exports.formatTime = (d)=>{
     return moment(d).format('HH:mm');
 };
+
+function LogSave(msg, type, data) {
+    ctrl('Log').save({
+        message: msg,
+        type: type,
+        data: data
+    });
+}
+exports.LogSave=LogSave;
 
 function readFileSync(file, encoding, json) {
     var filepath = __dirname + '/' + file;

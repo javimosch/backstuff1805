@@ -1,5 +1,4 @@
 var express = require('express');
-
 var bodyParser = require('body-parser')
 var bb = require('express-busboy');
 var busboy = require('connect-busboy');
@@ -16,6 +15,11 @@ var config = JSON.parse(fs.readFileSync(process.cwd() + '/package.json'));
 var apiMessage = 'Backstuff runing version ' + config.version + '!';
 var https = require('https');
 var http = require('http');
+//
+if(!process.env.APPNAME){
+    console.log('Enviroment Variable APPNAME expected.');
+    return process.exit(1);
+}
 //
 //
 //CORS

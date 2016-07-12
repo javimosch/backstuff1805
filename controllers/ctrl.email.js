@@ -38,6 +38,7 @@ var EXPORT_ACTIONS = {
     GAB_USER_PASSWORD_RESET: GAB_USER_PASSWORD_RESET,
     GAB_USER_NEW_ACCOUNT: GAB_USER_NEW_ACCOUNT,
     GAB_ADMIN_USER_NEW_ACCOUNT: GAB_ADMIN_USER_NEW_ACCOUNT,
+    GAB_ADMIN_CONTACT_FORM: GAB_ADMIN_CONTACT_FORM,
 
     BA_ADMIN_CONTACT_FORM: BA_ADMIN_CONTACT_FORM,
 
@@ -107,6 +108,11 @@ function send(opt, resCb) {
             opt.subject = process.env.companyName + ' | ' + opt.subject;
         }
     }
+
+    if (!opt.to) {
+        console.log('WARNING: Sends expects parameter "to"');
+    }
+
     var data = {
         attachment: opt.attachment || null,
         type: opt.__notificationType,
@@ -251,28 +257,82 @@ function generateInvoiceAttachmentIfNecessary(data, t, cb) {
 function GAB_ADMIN_USER_NEW_ACCOUNT(data, cb) {
     GAB_CUSTOM({
         name: 'GAB_ADMIN_USER_NEW_ACCOUNT',
-        subject: "GAB - New User Account",
+        subject: "GAC - New User Account",
         data: data,
         to: data._admin && data._admin.email
-    },cb);
+    }, cb);
 }
 
 function GAB_USER_NEW_ACCOUNT(data, cb) {
     GAB_CUSTOM({
         name: 'GAB_USER_NEW_ACCOUNT',
-        subject: "GAB - New Account",
+        subject: "GAC - New Account",
         data: data,
         to: data._user && data._user.email
-    },cb);
+    }, cb);
 }
 
 function GAB_USER_PASSWORD_RESET(data, cb) {
     GAB_CUSTOM({
         name: 'GAB_USER_PASSWORD_RESET',
-        subject: "GAB - Account New Password",
+        subject: "GAC - Account New Password",
         data: data,
         to: data._user && data._user.email
-    },cb);
+    }, cb);
+}
+
+function everyUserWithRole(cb) {
+    ctrl('Role').get({
+        code: 'admin'
+    }, (err, _role) => {
+        if (err) return console.log('WARNING: Query for role fail');
+        ctrl('User').getAll({
+            __rules: {
+                roles: {
+                    $in: [_role._id]
+                }
+            }
+        }, (err, _admins) => {
+            if (err) return console.log('WARNING: Query for admins fail.', JSON.stringify(err));
+            if (_admins) {
+                console.log('LOG: reading admins', _admins.length);
+                _admins.forEach((_admin) => {
+                    console.log('LOG: push admin', _admin.email);
+                    cb(_admin)
+                });
+            }
+            else {
+                console.log('WARNING: Query for admins empty.');
+            }
+        });
+    });
+}
+
+function GAB_ADMIN_CONTACT_FORM(data, cb) {
+    cb(null, "working, thanks.");
+
+    everyUserWithRole((_admin) => {
+        var payload = _.cloneDeep(data);
+        payload._admin = _admin;
+        next(payload);
+    });
+
+    function next(payload) {
+        GAB_CUSTOM({
+            name: 'GAB_ADMIN_CONTACT_FORM',
+            subject: "GAC - Contact form",
+            data: Object.assign(payload, {
+                replace: {
+                    '$FORM_MESSAGE': payload._form.message || 'unknown',
+                    '$FORM_EMAIL': payload._form.email || 'unknown',
+                    '$FORM_NAME': payload._form.name || 'unknown',
+                }
+            }),
+            to: payload._admin && payload._admin.email
+        }, (err, res) => {
+            if (err) return dblog('GAB_ADMIN_CONTACT_FORM Error', err);
+        });
+    }
 }
 
 function GAB_CUSTOM(opt, cb) {
@@ -283,15 +343,28 @@ function GAB_CUSTOM(opt, cb) {
     var _user = data._user,
         _admin = data._admin;
     moment.locale('en')
-    var replaceData = {
-        '$USER_PWD': _user.pwd || '[Contact support for a new password]',
-        '$USER_FULLNAME': _user.fullName || _user.email,
-        '$USER_EMAIL': _user.email,
-        '$DASH_URL': adminUrl('login?email=' + _user.email + '&k=' + btoa(_user.pwd || 'dummy')),
-        '$ADMIN_PWD': _admin && _admin.pwd,
-        '$ADMIN_FULLNAME': _admin && _admin.fullName,
-        '$ADMIN_EMAIL': _admin && _admin.email,
-    };
+    var replaceData = {};
+    if (_user) {
+        replaceData = Object.assign(replaceData, {
+            '$USER_DASH_URL': adminUrl('login?email=' + _user.email + '&k=' + btoa(_user.pwd || 'dummy')),
+            '$USER_PWD': _user.pwd || '[Contact support for a new password]',
+            '$USER_FULLNAME': _user.fullName || _user.email,
+            '$USER_EMAIL': _user.email
+        });
+    }
+    if (_admin) {
+        replaceData = Object.assign(replaceData, {
+            '$USER_DASH_URL': adminUrl('login?email=' + _admin.email + '&k=' + btoa(_admin.pwd || 'dummy')),
+            '$ADMIN_PWD': _admin && _admin.pwd,
+            '$ADMIN_FULLNAME': _admin && _admin.fullName,
+            '$ADMIN_NICKNAME': _admin && _admin.nickName || _admin.fullName || _admin.email,
+            '$ADMIN_EMAIL': _admin && _admin.email,
+        });
+    }
+    replaceData = Object.assign(replaceData, data.replace || {});
+
+    console.log('gac sending custom', to, replaceData);
+
     send({
         attachment: data.attachment || null,
         __notificationType: name,
@@ -683,6 +756,6 @@ function htmlOrderSelectedDiagsList(_order) {
 function dblog(msg, type) {
     Log.save({
         message: msg,
-        type: type
+        type: type || 'error'
     });
 }

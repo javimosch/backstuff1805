@@ -99,6 +99,7 @@ create('Email', {});
 create('Log', require('../schemas/schema.log').def);
 create('Stripe', {});
 create('Settings', require('../schemas/schema.diags-settings').def);
+create('Configuration', require('../schemas/schema.configuration').def);
 
 try {
     require('../config/config.' + process.env.APPNAME.toString().toLowerCase()).models(create);

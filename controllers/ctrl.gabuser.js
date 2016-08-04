@@ -22,7 +22,7 @@ function login(data, cb) {
         if(err)return cb(err,res);
         
         //save login event
-        if(res._id){
+        if(res && res._id){
             res.loggedAt = Date.now();
             res.save();
         }
@@ -62,7 +62,7 @@ function get(data, cb) {
     var Order = ctrl('Order');
     actions.get(data, (err, _user) => {
         if (err) return cb(err);
-
+        if(!_user) return cb(err,_user);
         Order.getAll({
             _biker: _user._id,
             __select: "debriefing",

@@ -101,6 +101,9 @@ create('Stripe', {});
 create('Settings', require('../schemas/schema.diags-settings').def);
 create('Configuration', require('../schemas/schema.configuration').def);
 
+create('OAUTH_Client', require('../schemas/schema.oauth_client').def);
+create('OAUTH_Token', require('../schemas/schema.oauth_token').def);
+
 try {
     require('../config/config.' + process.env.APPNAME.toString().toLowerCase()).models(create);
 }

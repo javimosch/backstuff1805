@@ -171,7 +171,7 @@ exports.create = function(modelName, m) {
                 log('createUpdate:matchData=' + JSON.stringify(matchData));
 
                 if (Object.keys(matchData).length > 0) {
-                    console.log('MODEL FROM ',modelName);
+                    console.log('MODEL FROM ', modelName);
                     return Model.findOne(toRules(matchData)).exec((err, r) => {
                         if (err) return rta(err, null);
                         if (r) {
@@ -482,7 +482,12 @@ exports.create = function(modelName, m) {
         });
     }
 
+    function getPaths(data, cb) {
+        cb(null, schema.paths);
+    }
+
     var RTA = {
+        getPaths:getPaths,
         schema: schema,
         model: Model,
         _hook: hook,

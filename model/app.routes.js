@@ -20,6 +20,7 @@ exports.configure = function(app) {
     var Log = dbController.create("Log");
     var File = dbController.create('File')
         //
+        //app.oauth.authorise(),
     app.get('/ctrl/:controller/:action/:data', function(req, res) {
         var controller = req.params.controller;
         var action = req.params.action;
@@ -37,6 +38,7 @@ exports.configure = function(app) {
         }
     });
 
+//app.oauth.authorise(),
     app.post('/ctrl/:controller/:action', function(req, res) {
         var controller = req.params.controller;
         var action = req.params.action;
@@ -69,7 +71,7 @@ exports.configure = function(app) {
         //console.log('routes:ctrl:end');
     });
 
-    app.post('/File/save/', (req, res) => {
+    app.post('/File/save/',app.oauth.authorise(), (req, res) => {
         File.save({}, File.result(res), req, res);
     });
 

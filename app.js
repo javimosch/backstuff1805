@@ -46,7 +46,15 @@ app.use(function(req, res, next) {
 app.use(bodyParser.urlencoded({
     extended: true
 }))
+
+
+
 app.use(bodyParser.json());
+
+var  oauthserver = require('oauth2-server');
+app.oauth = oauthserver(require('./model/oauthserver'));
+app.all('/oauth/token', app.oauth.grant());
+
 //ROOT
 app.get('/', function(req, res) {
     res.json({
@@ -72,6 +80,7 @@ configureProgrammedTasks(app);
 app.use('/', express.static('./www'));
 //START
 
+app.use(app.oauth.errorHandler());
 
 if (process.env.SSL_CERT) {
 	//HTTPS

@@ -101,6 +101,8 @@ create('Stripe', {});
 create('Settings', require('../schemas/schema.diags-settings').def);
 create('Configuration', require('../schemas/schema.configuration').def);
 
+create('Todo', require('../schemas/schema.todo').def);
+
 create('OAUTH_Client', require('../schemas/schema.oauth_client').def);
 create('OAUTH_Token', require('../schemas/schema.oauth_token').def);
 
